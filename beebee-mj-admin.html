@@ -37,6 +37,20 @@
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     .wind-badge { font-size: 15px; font-weight: 900; color: var(--gold); background: #2d2415; border: 1px solid #78350f; padding: 2px 8px; border-radius: 6px; }
+    
+    /* 東錢資訊盒 */
+    .dong-box {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
     .player-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .player-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; }
     .player-card.is-dealer { border-color: var(--gold); }
@@ -99,7 +113,7 @@
 </head>
 <body>
 
-<div class="container" id="adminApp" style="display: none;">
+<div class="container" id="adminApp">
   <div class="tab-bar">
     <div class="tab-btn active" id="tabMatchBtn" onclick="switchTab('match')">🀄 當前牌局</div>
     <div class="tab-btn" id="tabLeaderboardBtn" onclick="switchTab('leaderboard')">📊 生涯總榜</div>
@@ -112,7 +126,18 @@
     <div class="game-over-banner" id="gameOverBanner">
       🏆 本將牌局已結束 (北風北完賽)！
       <div style="margin-top: 8px;">
-        <button class="btn-submit" style="padding: 6px 14px; font-size: 13px;" onclick="archiveCurrentMatch()">💾 結算歸檔本將並進入新將</button>
+        <button class="btn-submit" style="padding: 6px 14px; font-size: 13px;" onclick="archiveCurrentMatch()">💾 結算歸檔本將 (自動補足東錢)</button>
+      </div>
+    </div>
+
+    <!-- 東錢即時統計 -->
+    <div class="dong-box">
+      <div>
+        💰 <b>本將東錢池</b>：<span id="dongPoolDisplay" style="color:var(--gold); font-weight:bold; font-size:16px;">0</span> 點
+        <span style="color:var(--text-muted); font-size:11px;">(每次自摸+20，滿5次=100)</span>
+      </div>
+      <div>
+        自摸次數：<span id="dongZimoCountDisplay" style="color:var(--win); font-weight:bold;">0</span> / 5 次
       </div>
     </div>
 
@@ -278,7 +303,6 @@
 </div>
 
 <script>
-  // Firebase 設定
   const firebaseConfig = {
     apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
     authDomain: "beebee-mj.firebaseapp.com",
@@ -289,6 +313,7 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_LOCAL_CACHE";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
@@ -304,7 +329,7 @@
       stats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     });
     return {
-      version: 9,
+      version: 10,
       roster: [...DEFAULT_ROSTER],
       matchCount: 1,
       totalLeagueMatches: 0,
@@ -323,15 +348,34 @@
   let currentlyEditingPlayer = null;
   let currentInput = { winnerIdx: 0, loserIdx: -1, tai: 1, isSpecial: false, specialPatterns: [] };
 
+  // 1. 驗證與免重複登入機制 (SessionStorage 防止刷新變空白)
   function checkPassword() {
+    if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
+      document.getElementById("adminApp").style.display = "block";
+      initDataPipeline();
+      return;
+    }
     const input = prompt("請輸入管理員密碼以進入記分後台：");
     if (input === ADMIN_PASSWORD) {
+      sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
       document.getElementById("adminApp").style.display = "block";
-      initFirebaseSync();
+      initDataPipeline();
     } else {
       alert("密碼錯誤，拒絕進入。");
       window.location.href = "beebee-mj-index.html";
     }
+  }
+
+  // 2. 雙層載入管線：先載入 LocalStorage 避免空白，再連 Firebase 同步
+  function initDataPipeline() {
+    const local = localStorage.getItem(LOCAL_CACHE_KEY);
+    if (local) {
+      try {
+        DB = JSON.parse(local);
+        renderAllLocal();
+      } catch(e) {}
+    }
+    initFirebaseSync();
   }
 
   function initFirebaseSync() {
@@ -344,6 +388,7 @@
         if (!val.roster) val.roster = Object.keys(val.playerStats);
         if (!val.archivedMatches) val.archivedMatches = [];
         DB = val;
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
         renderAllLocal();
       } else {
         saveDBToCloud();
@@ -352,6 +397,7 @@
   }
 
   function saveDBToCloud() {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
     dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
   }
 
@@ -394,6 +440,12 @@
   function renderMatchView() {
     const match = DB.currentMatch;
     if (!match.history) match.history = [];
+
+    // 計算本將自摸次數與東錢
+    const zimoCount = match.history.filter(h => h.isZimo).length;
+    const dongPool = zimoCount * 20;
+    document.getElementById("dongZimoCountDisplay").innerText = zimoCount;
+    document.getElementById("dongPoolDisplay").innerText = dongPool;
 
     document.getElementById("currentMatchIdxDisplay").innerText = DB.matchCount;
     document.getElementById("currentRoundTitle").innerText = match.isGameOver ? "本將完賽" : getRoundTitle(match.currentRoundWind, match.currentHandWind, match.consecutiveDeals);
@@ -551,6 +603,7 @@
 
     let delta = [0, 0, 0, 0];
     let desc = "";
+    const isZimoRound = (lIdx === -1);
 
     const calcPoints = (payerIdx) => {
       let t = tai;
@@ -560,7 +613,7 @@
 
     const patternBadge = currentInput.specialPatterns.length > 0 ? `【${currentInput.specialPatterns.join("、")}】` : "";
 
-    if (lIdx === -1) {
+    if (isZimoRound) {
       let totalWon = 0;
       for (let i = 0; i < 4; i++) {
         if (i !== wIdx) {
@@ -588,7 +641,14 @@
     for (let i = 0; i < 4; i++) match.scores[i] += delta[i];
 
     if (!match.history) match.history = [];
-    match.history.unshift({ roundTitle: currentTitle, text: desc, delta: [...delta], patterns: [...currentInput.specialPatterns] });
+    match.history.unshift({
+      roundTitle: currentTitle,
+      text: desc,
+      delta: [...delta],
+      isZimo: isZimoRound,
+      winnerIdx: wIdx,
+      patterns: [...currentInput.specialPatterns]
+    });
 
     if (wIdx === dealerIdx) {
       match.consecutiveDeals += 1;
@@ -600,7 +660,6 @@
     currentInput.isSpecial = false;
     currentInput.specialPatterns = [];
 
-    // 關鍵修復：立即在本地端重繪，絕無延遲
     renderAllLocal();
     saveDBToCloud();
   }
@@ -620,7 +679,10 @@
     match.history.unshift({
       roundTitle: currentTitle,
       text: `流局 (平局) - 莊家 ${match.seats[dealerIdx]} 連 ${match.consecutiveDeals}`,
-      delta: [0, 0, 0, 0], patterns: []
+      delta: [0, 0, 0, 0],
+      isZimo: false,
+      winnerIdx: -1,
+      patterns: []
     });
 
     renderAllLocal();
@@ -674,20 +736,54 @@
     saveDBToCloud();
   }
 
+  // 完賽歸檔：自動補足未滿 5 次東錢
   function archiveCurrentMatch() {
-    if (!confirm("確定歸檔本將成績？")) return;
     const match = DB.currentMatch;
+    const zimoCount = (match.history || []).filter(h => h.isZimo).length;
+    let dongDeductionLog = [];
+
+    // 東錢未滿 5 次 (100點)，由倒數那幾把胡牌者補足
+    if (zimoCount < 5) {
+      const shortage = 5 - zimoCount;
+      const nonZimoWins = (match.history || []).filter(h => !h.isZimo && h.winnerIdx !== -1 && h.winnerIdx !== undefined);
+      
+      let deductedCount = 0;
+      for (let i = 0; i < nonZimoWins.length && deductedCount < shortage; i++) {
+        const winRecord = nonZimoWins[i];
+        const winnerSeat = winRecord.winnerIdx;
+        match.scores[winnerSeat] -= 20; // 扣除20點東錢差額
+        dongDeductionLog.push(`${match.seats[winnerSeat]} (局次 ${winRecord.roundTitle} 胡牌) 補扣東錢 20 點`);
+        deductedCount++;
+      }
+
+      if (deductedCount < shortage) {
+        alert(`注意：本將自摸僅 ${zimoCount} 次，差額 ${shortage} 次，但放槍胡牌局數不足 ${deductedCount} 次，已盡可能補扣。`);
+      }
+    }
+
+    let confirmMsg = "確定歸檔本將成績？\n";
+    if (dongDeductionLog.length > 0) {
+      confirmMsg += "\n【東錢未滿5次差額自動補扣明細】：\n" + dongDeductionLog.join("\n");
+    }
+
+    if (!confirm(confirmMsg)) return;
+
     match.seats.forEach((name, idx) => {
       DB.playerStats[name].totalScore += match.scores[idx];
       DB.playerStats[name].matchesPlayed += 1;
     });
+
     DB.totalLeagueMatches += 1;
     if (!DB.archivedMatches) DB.archivedMatches = [];
     DB.archivedMatches.unshift({
       matchNumber: DB.matchCount,
       date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      seats: [...match.seats], scores: [...match.scores], history: [...(match.history || [])]
+      seats: [...match.seats],
+      scores: [...match.scores],
+      history: [...(match.history || [])],
+      dongLog: dongDeductionLog
     });
+
     DB.matchCount += 1;
     stateHistory = [];
     DB.currentMatch = {
@@ -695,6 +791,7 @@
       scores: [0, 0, 0, 0], initialDealerIdx: match.initialDealerIdx,
       currentRoundWind: 0, currentHandWind: 0, consecutiveDeals: 0, isGameOver: false, history: []
     };
+
     renderAllLocal();
     saveDBToCloud();
     switchTab('leaderboard');
@@ -747,6 +844,11 @@
         const color = score > 0 ? 'var(--win)' : (score < 0 ? 'var(--lose)' : 'var(--text-muted)');
         return `<span>${name}: <b style="color:${color};">${score > 0 ? '+'+score : score}</b></span>`;
       }).join(" ｜ ");
+
+      const dongNotes = (m.dongLog && m.dongLog.length > 0) 
+        ? `<div style="font-size: 11px; color: var(--gold); margin-top: 4px;">• 東錢差額補扣：${m.dongLog.join("；")}</div>` 
+        : "";
+
       return `
         <div style="background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 6px;">
@@ -757,6 +859,7 @@
             </div>
           </div>
           <div style="font-size: 13px; line-height: 1.6;">${seatResults}</div>
+          ${dongNotes}
         </div>
       `;
     }).join("");
@@ -886,7 +989,7 @@
   }
 
   function parseHistoryAction(h, seats) {
-    if (h.text.includes("自摸")) {
+    if (h.isZimo) {
       const winnerName = h.text.split(" ")[0];
       if (DB.playerStats[winnerName]) DB.playerStats[winnerName].mo += 1;
       seats.forEach(s => { if (s !== winnerName && DB.playerStats[s]) DB.playerStats[s].beiMo += 1; });

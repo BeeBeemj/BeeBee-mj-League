@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BeeBee 麻將聯賽 - 公開觀戰即時榜</title>
+  <title>BeeBee 麻將聯賽 - 公開即時戰報與榮譽榜</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -31,6 +31,26 @@
     .card-title { font-size: 15px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+    
+    /* 趣味榮譽卡片網格 */
+    .awards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .award-card {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
+      position: relative;
+    }
+    .award-card.full-width { grid-column: span 2; }
+    .award-title { font-size: 12px; font-weight: bold; color: var(--gold); margin-bottom: 4px; }
+    .award-player { font-size: 16px; font-weight: 900; color: #fff; }
+    .award-stat { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
     .stats-table-wrapper { overflow-x: auto; }
     table.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
     table.stats-table th, table.stats-table td { padding: 8px 4px; border-bottom: 1px solid var(--card-border); white-space: nowrap; }
@@ -47,10 +67,19 @@
     </div>
   </div>
 
-  <!-- 生涯總榜 -->
+  <!-- 7 大趣味榮譽榜 -->
   <div class="card">
     <div class="card-title">
-      <span>🏆 選手時時總積分榜</span>
+      <span>👑 聯賽數據榮譽榜</span>
+      <span style="font-size: 11px; color: var(--text-muted);">局數比率排名</span>
+    </div>
+    <div class="awards-grid" id="awardsContainer"></div>
+  </div>
+
+  <!-- 1. 生涯總積分勝率榜 -->
+  <div class="card">
+    <div class="card-title">
+      <span>🏆 選手時時總積分排行榜 (勝率排行)</span>
       <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 將</span>
     </div>
     <div class="stats-table-wrapper">
@@ -108,12 +137,37 @@
     }
 
     document.getElementById("leagueMatchesTotal").innerText = `累計：${DB.totalLeagueMatches || 0} 將`;
+
+    // 1. 計算每位選手參與的總局數與比率指標
+    const playerMetrics = (DB.roster || []).map(name => {
+      const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+      const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
+      return {
+        name,
+        totalScore: p.totalScore || 0,
+        matchesPlayed: p.matchesPlayed || 0,
+        hu: p.hu || 0,
+        mo: p.mo || 0,
+        qiang: p.qiang || 0,
+        beiMo: p.beiMo || 0,
+        nothing: p.nothing || 0,
+        totalRounds,
+        zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
+        huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
+        laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
+        qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
+        peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
+        ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
+      };
+    });
+
+    // 2. 渲染 7 大趣味榮譽榜
+    renderAwards(playerMetrics);
+
+    // 3. 渲染主排行榜 (依照總積分勝率)
+    const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
     const tbody = document.getElementById("leaderboardBody");
     tbody.innerHTML = "";
-
-    const sorted = (DB.roster || []).map(name => ({
-      name, ...(displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 })
-    })).sort((a, b) => b.totalScore - a.totalScore);
 
     sorted.forEach((p, idx) => {
       let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
@@ -131,6 +185,7 @@
       `;
     });
 
+    // 4. 渲染歷將戰報
     const container = document.getElementById("archivedMatchesContainer");
     const archived = DB.archivedMatches || [];
     document.getElementById("matchArchiveCount").innerText = `共 ${archived.length} 將`;
@@ -147,6 +202,10 @@
         return `<span>${name}: <b style="color:${color};">${score > 0 ? '+'+score : score}</b></span>`;
       }).join(" ｜ ");
 
+      const dongNotes = (m.dongLog && m.dongLog.length > 0) 
+        ? `<div style="font-size: 11px; color: var(--gold); margin-top: 4px;">• 東錢補扣：${m.dongLog.join("；")}</div>` 
+        : "";
+
       return `
         <div style="background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 4px;">
@@ -154,10 +213,66 @@
             <span style="color: var(--text-muted); font-size: 11px;">${m.date}</span>
           </div>
           <div style="font-size: 13px; line-height: 1.5;">${seatResults}</div>
+          ${dongNotes}
         </div>
       `;
     }).join("");
   });
+
+  function renderAwards(players) {
+    if (players.length === 0) return;
+
+    const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
+    const topScore = findTop('totalScore');
+    const topZimo = findTop('zimoRate');
+    const topHu = findTop('huRate');
+    const topLaohu = findTop('laohuRate');
+    const topQiang = findTop('qiangRate');
+    const topPeida = findTop('peidaRate');
+    const topAshuai = findTop('ashuaiRate');
+
+    const fmtPct = (val) => (val * 100).toFixed(1) + "%";
+
+    const awardsHtml = `
+      <div class="award-card full-width">
+        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
+        <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
+        <div class="award-stat">出賽 ${topScore.matchesPlayed} 將 / 累計勝局 ${topScore.hu + topScore.mo} 次</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🌟 自摸王</div>
+        <div class="award-player">${topZimo.name}</div>
+        <div class="award-stat">自摸率：<b>${fmtPct(topZimo.zimoRate)}</b> (${topZimo.mo} 次)</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🎯 抓槍王</div>
+        <div class="award-player">${topHu.name}</div>
+        <div class="award-stat">胡牌率：<b>${fmtPct(topHu.huRate)}</b> (${topHu.hu} 次)</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">👑 老胡 (總勝出率)</div>
+        <div class="award-player">${topLaohu.name}</div>
+        <div class="award-stat">勝出率：<b>${fmtPct(topLaohu.laohuRate)}</b> (${topLaohu.hu + topLaohu.mo} 次)</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">💥 槍王 (放槍率)</div>
+        <div class="award-player" style="color:var(--lose);">${topQiang.name}</div>
+        <div class="award-stat">放槍率：<b>${fmtPct(topQiang.qiangRate)}</b> (${topQiang.qiang} 次)</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🍵 陪打王 (沒事率)</div>
+        <div class="award-player">${topPeida.name}</div>
+        <div class="award-stat">防守沒事率：<b>${fmtPct(topPeida.peidaRate)}</b> (${topPeida.nothing} 次)</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🌧️ 阿衰 (被摸率)</div>
+        <div class="award-player" style="color:#fda4af;">${topAshuai.name}</div>
+        <div class="award-stat">被自摸率：<b>${fmtPct(topAshuai.ashuaiRate)}</b> (${topAshuai.beiMo} 次)</div>
+      </div>
+    `;
+
+    document.getElementById("awardsContainer").innerHTML = awardsHtml;
+  }
 </script>
 </body>
 </html>
