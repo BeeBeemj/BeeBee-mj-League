@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BeeBee 麻將聯賽 - 即時戰報與榮譽榜</title>
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -33,6 +34,7 @@
     .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     
+    /* 今日場次激戰/待機專區 */
     .today-live-box {
       background: linear-gradient(135deg, #1e1b4b, #0f172a);
       border: 1px solid #4f46e5;
@@ -49,6 +51,7 @@
     }
     .idle-emoji { font-size: 32px; display: block; margin-bottom: 8px; }
 
+    /* 榮譽榜網格 */
     .awards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
     .award-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; position: relative; }
     .award-card.full-width { grid-column: span 2; }
@@ -62,6 +65,7 @@
     table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .highlight-cell { font-weight: bold; font-family: monospace; }
 
+    /* 歷場戰報折疊卡片 (絕無東錢) */
     .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
     .session-archive-header { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
     .session-archive-header:hover { background: #243247; }
@@ -78,8 +82,14 @@
     </div>
   </div>
 
-  <!-- 置頂：今日聚會即時戰況 (未開場顯示搞笑台詞) -->
-  <div class="today-live-box" id="todaySessionSection"></div>
+  <!-- 置頂：今日聚會即時戰況 (若未開場則顯示搞笑台詞) -->
+  <div class="today-live-box" id="todaySessionSection">
+    <div class="idle-box">
+      <span class="idle-emoji">🀄🍵</span>
+      <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
+      <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
+    </div>
+  </div>
 
   <!-- 7 大趣味榮譽榜 -->
   <div class="card">
@@ -90,7 +100,7 @@
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
 
-  <!-- 生涯總積分榜 (時時排序) -->
+  <!-- 生涯總積分勝率榜 (時時嚴格由高到低排序) -->
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
@@ -116,7 +126,7 @@
     </div>
   </div>
 
-  <!-- 歷場戰報 (兩層式折疊) -->
+  <!-- 歷場戰報 (純勝負點數，絕無東錢) -->
   <div class="card">
     <div class="card-title">
       <span>📜 歷場戰報 (點擊場次展開明細)</span>
@@ -137,82 +147,108 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
 
+  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
+
+  // 預設本地乾淨狀態，確保 Firebase 還沒回傳前 100% 畫面有內容
+  let currentDB = {
+    roster: [...DEFAULT_ROSTER],
+    playerStats: {},
+    currentSession: null,
+    totalLeagueMatches: 0,
+    archivedSessions: []
+  };
+  DEFAULT_ROSTER.forEach(name => {
+    currentDB.playerStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+  });
+
+  // 初次進入先秒畫一次預設畫面，防白屏
+  renderAllData(currentDB);
+
+  // 初始化 Firebase
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
 
   dbRef.on("value", snapshot => {
     try {
-      const DB = snapshot.val();
-      if (!DB) return;
-
-      // 1. 渲染今日場次專區
-      renderTodayLiveSection(DB);
-
-      // 2. 計算生涯統計與比率 (容錯防護)
-      const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
-      if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
-        DB.currentMatch.seats.forEach((name, idx) => {
-          if (!displayStats[name]) displayStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
-          displayStats[name].totalScore += (DB.currentMatch.scores ? (DB.currentMatch.scores[idx] || 0) : 0);
-        });
+      const val = snapshot.val();
+      if (val) {
+        currentDB = val;
+        // 確保名單完整
+        if (!currentDB.roster || currentDB.roster.length === 0) {
+          currentDB.roster = Object.keys(currentDB.playerStats || {});
+        }
+        if (currentDB.roster.length === 0) currentDB.roster = [...DEFAULT_ROSTER];
+        renderAllData(currentDB);
       }
-
-      const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
-      document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
-
-      const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : Object.keys(displayStats);
-      const playerMetrics = rosterList.map(name => {
-        const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
-        const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
-        return {
-          name,
-          totalScore: p.totalScore || 0,
-          matchesPlayed: p.matchesPlayed || 0,
-          hu: p.hu || 0,
-          mo: p.mo || 0,
-          qiang: p.qiang || 0,
-          beiMo: p.beiMo || 0,
-          nothing: p.nothing || 0,
-          totalRounds,
-          zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
-          huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
-          laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
-          qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
-          peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
-          ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
-        };
-      });
-
-      renderAwards(playerMetrics);
-
-      // 嚴格排序
-      const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
-      const tbody = document.getElementById("leaderboardBody");
-      tbody.innerHTML = "";
-
-      sorted.forEach((p, idx) => {
-        let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
-        tbody.innerHTML += `
-          <tr>
-            <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
-            <td style="font-weight: bold; text-align: left;">${p.name}</td>
-            <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
-            <td style="font-weight: bold;">${p.matchesPlayed}</td>
-            <td style="color: var(--win); font-weight: bold;">${p.hu}</td>
-            <td style="color: #6ee7b7; font-weight: bold;">${p.mo}</td>
-            <td style="color: var(--lose); font-weight: bold;">${p.qiang}</td>
-            <td style="color: #fda4af;">${p.beiMo}</td>
-            <td style="color: var(--text-muted);">${p.nothing}</td>
-          </tr>
-        `;
-      });
-
-      // 渲染歷場戰報
-      renderArchivedSessions(DB.archivedSessions || []);
     } catch(err) {
       console.error("前台即時渲染異常捕獲：", err);
     }
   });
+
+  function renderAllData(DB) {
+    renderTodayLiveSection(DB);
+
+    const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
+    // 如果當前有開場，時時加計當前將分數
+    if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
+      DB.currentMatch.seats.forEach((name, idx) => {
+        if (!displayStats[name]) displayStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+        displayStats[name].totalScore += (DB.currentMatch.scores ? (DB.currentMatch.scores[idx] || 0) : 0);
+      });
+    }
+
+    const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
+    document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
+
+    const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
+    const playerMetrics = rosterList.map(name => {
+      const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+      const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
+      return {
+        name,
+        totalScore: p.totalScore || 0,
+        matchesPlayed: p.matchesPlayed || 0,
+        hu: p.hu || 0,
+        mo: p.mo || 0,
+        qiang: p.qiang || 0,
+        beiMo: p.beiMo || 0,
+        nothing: p.nothing || 0,
+        totalRounds,
+        zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
+        huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
+        laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
+        qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
+        peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
+        ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
+      };
+    });
+
+    renderAwards(playerMetrics);
+
+    // 時時依據總積分嚴格排序
+    const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
+    const tbody = document.getElementById("leaderboardBody");
+    tbody.innerHTML = "";
+
+    sorted.forEach((p, idx) => {
+      let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
+      tbody.innerHTML += `
+        <tr>
+          <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
+          <td style="font-weight: bold; text-align: left;">${p.name}</td>
+          <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
+          <td style="font-weight: bold;">${p.matchesPlayed}</td>
+          <td style="color: var(--win); font-weight: bold;">${p.hu}</td>
+          <td style="color: #6ee7b7; font-weight: bold;">${p.mo}</td>
+          <td style="color: var(--lose); font-weight: bold;">${p.qiang}</td>
+          <td style="color: #fda4af;">${p.beiMo}</td>
+          <td style="color: var(--text-muted);">${p.nothing}</td>
+        </tr>
+      `;
+    });
+
+    renderArchivedSessions(DB.archivedSessions || []);
+  }
 
   function renderTodayLiveSection(DB) {
     const container = document.getElementById("todaySessionSection");
@@ -265,6 +301,7 @@
     `;
   }
 
+  // 歷場戰報：全面移除「東錢」文字與數值
   function renderArchivedSessions(sessions) {
     const container = document.getElementById("archivedSessionsContainer");
     document.getElementById("matchArchiveCount").innerText = `共 ${sessions.length} 場`;
@@ -276,10 +313,7 @@
 
     container.innerHTML = sessions.map((sess, sIdx) => {
       const sessionScoreTotals = {};
-      let totalSessionDong = 0;
-
       (sess.matches || []).forEach(m => {
-        totalSessionDong += (m.dongTotalPool || 100);
         (m.seats || []).forEach((name, i) => {
           sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + (m.scores ? m.scores[i] : 0);
         });
@@ -301,9 +335,8 @@
 
         return `
           <div style="background:#1e293b; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-bottom:6px;">
-            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; color:var(--gold); margin-bottom:4px;">
-              <span>第 ${m.matchNumber} 將 (${m.time})</span>
-              <span style="color:var(--text-muted);">東錢池：${m.dongTotalPool || 100} 點</span>
+            <div style="font-size:12px; font-weight:bold; color:var(--gold); margin-bottom:4px;">
+              第 ${m.matchNumber} 將 (${m.time || ''})
             </div>
             <div style="font-size:12px; line-height:1.5;">${rows}</div>
           </div>
@@ -317,10 +350,7 @@
               <span style="font-size:14px; font-weight:bold; color:#fff;">📁 ${sess.name}</span>
               <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 共 ${sess.matches ? sess.matches.length : 0} 將)</span>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:11px; color:var(--gold);">東錢 ${totalSessionDong} 點</span>
-              <span style="font-size:12px; color:var(--primary);" id="pubArrowIcon-${sIdx}">▼ 展開</span>
-            </div>
+            <span style="font-size:12px; color:var(--primary);" id="pubArrowIcon-${sIdx}">▼ 展開明細</span>
           </div>
           <div class="session-detail-panel" id="pubSessionPanel-${sIdx}">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px dashed var(--card-border);">
@@ -332,14 +362,14 @@
         </div>
       `;
     }).join("");
-  });
+  }
 
   function togglePublicSessionAccordion(sIdx) {
     const panel = document.getElementById(`pubSessionPanel-${sIdx}`);
     const arrow = document.getElementById(`pubArrowIcon-${sIdx}`);
     if (panel.classList.contains("open")) {
       panel.classList.remove("open");
-      arrow.innerText = "▼ 展開";
+      arrow.innerText = "▼ 展開明細";
     } else {
       panel.classList.add("open");
       arrow.innerText = "▲ 收合";
