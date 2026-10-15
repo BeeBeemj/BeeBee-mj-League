@@ -33,7 +33,6 @@
     .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     
-    /* 今日場次專區 */
     .today-live-box {
       background: linear-gradient(135deg, #1e1b4b, #0f172a);
       border: 1px solid #4f46e5;
@@ -79,7 +78,7 @@
     </div>
   </div>
 
-  <!-- 置頂：今日聚會即時戰況 (若未開場則顯示搞笑台詞) -->
+  <!-- 置頂：今日聚會即時戰況 (未開場顯示搞笑台詞) -->
   <div class="today-live-box" id="todaySessionSection"></div>
 
   <!-- 7 大趣味榮譽榜 -->
@@ -142,74 +141,79 @@
   const dbRef = firebase.database().ref("league_data");
 
   dbRef.on("value", snapshot => {
-    const DB = snapshot.val();
-    if (!DB) return;
+    try {
+      const DB = snapshot.val();
+      if (!DB) return;
 
-    // 1. 渲染今日場次專區 (含未開場搞笑台詞)
-    renderTodayLiveSection(DB);
+      // 1. 渲染今日場次專區
+      renderTodayLiveSection(DB);
 
-    // 2. 計算生涯統計與比率 (含當前正在打的分數)
-    const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
-    if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
-      DB.currentMatch.seats.forEach((name, idx) => {
-        if (displayStats[name]) displayStats[name].totalScore += (DB.currentMatch.scores ? DB.currentMatch.scores[idx] : 0);
+      // 2. 計算生涯統計與比率 (容錯防護)
+      const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
+      if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
+        DB.currentMatch.seats.forEach((name, idx) => {
+          if (!displayStats[name]) displayStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+          displayStats[name].totalScore += (DB.currentMatch.scores ? (DB.currentMatch.scores[idx] || 0) : 0);
+        });
+      }
+
+      const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
+      document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
+
+      const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : Object.keys(displayStats);
+      const playerMetrics = rosterList.map(name => {
+        const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+        const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
+        return {
+          name,
+          totalScore: p.totalScore || 0,
+          matchesPlayed: p.matchesPlayed || 0,
+          hu: p.hu || 0,
+          mo: p.mo || 0,
+          qiang: p.qiang || 0,
+          beiMo: p.beiMo || 0,
+          nothing: p.nothing || 0,
+          totalRounds,
+          zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
+          huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
+          laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
+          qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
+          peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
+          ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
+        };
       });
+
+      renderAwards(playerMetrics);
+
+      // 嚴格排序
+      const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
+      const tbody = document.getElementById("leaderboardBody");
+      tbody.innerHTML = "";
+
+      sorted.forEach((p, idx) => {
+        let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
+        tbody.innerHTML += `
+          <tr>
+            <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
+            <td style="font-weight: bold; text-align: left;">${p.name}</td>
+            <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
+            <td style="font-weight: bold;">${p.matchesPlayed}</td>
+            <td style="color: var(--win); font-weight: bold;">${p.hu}</td>
+            <td style="color: #6ee7b7; font-weight: bold;">${p.mo}</td>
+            <td style="color: var(--lose); font-weight: bold;">${p.qiang}</td>
+            <td style="color: #fda4af;">${p.beiMo}</td>
+            <td style="color: var(--text-muted);">${p.nothing}</td>
+          </tr>
+        `;
+      });
+
+      // 渲染歷場戰報
+      renderArchivedSessions(DB.archivedSessions || []);
+    } catch(err) {
+      console.error("前台即時渲染異常捕獲：", err);
     }
-
-    const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
-    document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
-
-    const playerMetrics = (DB.roster || []).map(name => {
-      const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
-      const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
-      return {
-        name,
-        totalScore: p.totalScore || 0,
-        matchesPlayed: p.matchesPlayed || 0,
-        hu: p.hu || 0,
-        mo: p.mo || 0,
-        qiang: p.qiang || 0,
-        beiMo: p.beiMo || 0,
-        nothing: p.nothing || 0,
-        totalRounds,
-        zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
-        huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
-        laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
-        qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
-        peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
-        ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
-      };
-    });
-
-    renderAwards(playerMetrics);
-
-    // 時時嚴格排序
-    const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
-    const tbody = document.getElementById("leaderboardBody");
-    tbody.innerHTML = "";
-
-    sorted.forEach((p, idx) => {
-      let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
-      tbody.innerHTML += `
-        <tr>
-          <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
-          <td style="font-weight: bold; text-align: left;">${p.name}</td>
-          <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
-          <td style="font-weight: bold;">${p.matchesPlayed}</td>
-          <td style="color: var(--win); font-weight: bold;">${p.hu}</td>
-          <td style="color: #6ee7b7; font-weight: bold;">${p.mo}</td>
-          <td style="color: var(--lose); font-weight: bold;">${p.qiang}</td>
-          <td style="color: #fda4af;">${p.beiMo}</td>
-          <td style="color: var(--text-muted);">${p.nothing}</td>
-        </tr>
-      `;
-    });
-
-    // 渲染歷場戰報
-    renderArchivedSessions(DB.archivedSessions || []);
   });
 
-  // 渲染今日即時專區
   function renderTodayLiveSection(DB) {
     const container = document.getElementById("todaySessionSection");
     if (!DB.currentSession) {
@@ -223,22 +227,20 @@
       return;
     }
 
-    // 計算今日各家累計淨勝分 (已完賽將次 + 當前進行中這一將)
     const todayScores = {};
     const sess = DB.currentSession;
-    sess.matches.forEach(m => {
-      m.seats.forEach((name, i) => {
-        todayScores[name] = (todayScores[name] || 0) + m.scores[i];
+    (sess.matches || []).forEach(m => {
+      (m.seats || []).forEach((name, i) => {
+        todayScores[name] = (todayScores[name] || 0) + (m.scores ? m.scores[i] : 0);
       });
     });
 
     if (DB.currentMatch && DB.currentMatch.seats) {
       DB.currentMatch.seats.forEach((name, i) => {
-        todayScores[name] = (todayScores[name] || 0) + (DB.currentMatch.scores ? DB.currentMatch.scores[i] : 0);
+        todayScores[name] = (todayScores[name] || 0) + (DB.currentMatch.scores ? (DB.currentMatch.scores[i] || 0) : 0);
       });
     }
 
-    // 依今日得分時時排序
     const sortedPlayers = Object.keys(todayScores).sort((a, b) => todayScores[b] - todayScores[a]);
     const scoreItems = sortedPlayers.map((name, rank) => {
       const sc = todayScores[name];
@@ -251,7 +253,7 @@
       `;
     }).join("");
 
-    const currentMatchNum = sess.matches.length + 1;
+    const currentMatchNum = (sess.matches ? sess.matches.length : 0) + 1;
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <span style="font-size:15px; font-weight:bold; color:#fff;">🔥 ${sess.name} (激戰中)</span>
@@ -276,10 +278,10 @@
       const sessionScoreTotals = {};
       let totalSessionDong = 0;
 
-      sess.matches.forEach(m => {
+      (sess.matches || []).forEach(m => {
         totalSessionDong += (m.dongTotalPool || 100);
-        m.seats.forEach((name, i) => {
-          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + m.scores[i];
+        (m.seats || []).forEach((name, i) => {
+          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + (m.scores ? m.scores[i] : 0);
         });
       });
 
@@ -290,9 +292,9 @@
         return `<span>#${rank+1} ${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
       }).join(" ｜ ");
 
-      const matchesDetailsHtml = sess.matches.map(m => {
-        const rows = m.seats.map((name, i) => {
-          const sc = m.scores[i];
+      const matchesDetailsHtml = (sess.matches || []).map(m => {
+        const rows = (m.seats || []).map((name, i) => {
+          const sc = m.scores ? m.scores[i] : 0;
           const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
           return `<span>${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
         }).join(" ｜ ");
@@ -313,7 +315,7 @@
           <div class="session-archive-header" onclick="togglePublicSessionAccordion(${sIdx})">
             <div>
               <span style="font-size:14px; font-weight:bold; color:#fff;">📁 ${sess.name}</span>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 共 ${sess.matches.length} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 共 ${sess.matches ? sess.matches.length : 0} 將)</span>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:11px; color:var(--gold);">東錢 ${totalSessionDong} 點</span>
@@ -330,7 +332,7 @@
         </div>
       `;
     }).join("");
-  }
+  });
 
   function togglePublicSessionAccordion(sIdx) {
     const panel = document.getElementById(`pubSessionPanel-${sIdx}`);
@@ -345,7 +347,7 @@
   }
 
   function renderAwards(players) {
-    if (players.length === 0) return;
+    if (!players || players.length === 0) return;
     const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
     const topScore = findTop('totalScore');
     const topZimo = findTop('zimoRate');
@@ -355,7 +357,7 @@
     const topPeida = findTop('peidaRate');
     const topAshuai = findTop('ashuaiRate');
 
-    const fmtPct = (val) => (val * 100).toFixed(1) + "%";
+    const fmtPct = (val) => ((val || 0) * 100).toFixed(1) + "%";
 
     const awardsHtml = `
       <div class="award-card full-width">

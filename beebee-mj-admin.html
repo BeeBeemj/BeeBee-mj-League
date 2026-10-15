@@ -64,7 +64,6 @@
     .score-zero { color: var(--text-muted); }
     .btn-edit-score { font-size: 11px; padding: 2px 6px; background: #334155; color: var(--primary); border: 1px solid #475569; border-radius: 4px; cursor: pointer; margin-left: 6px; }
 
-    /* 左右對照按鈕區 */
     .selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .col-title { font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed var(--card-border); }
     .col-win .col-title { color: var(--win); }
@@ -75,8 +74,6 @@
       font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s ease;
     }
     .btn-select:disabled { opacity: 0.25; cursor: not-allowed; }
-    
-    /* 明確的選中高亮反饋 */
     .btn-win.selected {
       background: var(--win) !important;
       border-color: #86efac !important;
@@ -326,7 +323,7 @@
   </div>
 </div>
 
-<!-- 特殊牌型彈窗 (自動加總 + 手動微調) -->
+<!-- 特殊牌型彈窗 -->
 <div class="modal-overlay" id="specialModal">
   <div class="modal">
     <div class="modal-header">
@@ -412,7 +409,7 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V16_STABLE";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V17_REPAIRED";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
@@ -421,7 +418,6 @@
   const WINDS = ["東", "南", "西", "北"];
   const NUM_ZH = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
 
-  // 牌型庫與對應預設台數
   const SPECIAL_PATTERNS = [
     { name: "碰碰胡", tai: 4 },
     { name: "小三元", tai: 4 },
@@ -448,7 +444,7 @@
       dongStats[name] = { totalPaid: 0, zimoPaidCount: 0, diffPaidCount: 0 };
     });
     return {
-      version: 16,
+      version: 17,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -467,7 +463,6 @@
   let stateHistory = [];
   let currentlyEditingPlayer = null;
 
-  // 當前錄入狀態
   let currentInput = {
     winnerIdx: 0,
     loserIdx: -1,
@@ -507,7 +502,7 @@
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
-      if (val && val.version >= 16) {
+      if (val && val.version >= 17) {
         if (!val.currentMatch) val.currentMatch = createCleanDB().currentMatch;
         if (!val.currentMatch.history) val.currentMatch.history = [];
         if (!val.playerStats) val.playerStats = createCleanDB().playerStats;
@@ -552,35 +547,42 @@
     if (tab === 'roster') renderRosterView();
   }
 
+  // --- 開場動作修復：確保絕不報錯 ---
   function handleSessionAction() {
-    if (!DB.currentSession) {
-      const now = new Date();
-      const defaultName = `${now.getMonth()+1}/${now.getDate()} 麻將聚會`;
-      const name = prompt("請輸入今日場次名稱 (如：10/15 戰局)：", defaultName);
-      if (!name || name.trim() === "") return;
+    try {
+      if (!DB.currentSession) {
+        const now = new Date();
+        const defaultName = `${now.getMonth()+1}/${now.getDate()} 麻將聚會`;
+        const name = prompt("請輸入今日場次名稱 (如：10/15 戰局)：", defaultName);
+        if (!name || name.trim() === "") return;
 
-      DB.currentSession = {
-        id: "SESSION_" + Date.now(),
-        name: name.trim(),
-        date: `${now.getMonth()+1}/${now.getDate()}`,
-        matches: []
-      };
+        DB.currentSession = {
+          id: "SESSION_" + Date.now(),
+          name: name.trim(),
+          date: `${now.getMonth()+1}/${now.getDate()}`,
+          matches: []
+        };
 
+        resetMatchState(1);
+        renderAllLocal();
+        saveDBToCloud();
+        openConfigModal();
+      } else {
+        if (!confirm(`確定要結束【${DB.currentSession.name}】並封存嗎？\n本場共完成 ${DB.currentSession.matches.length} 將。`)) return;
+        closeAndArchiveSession();
+        renderAllLocal();
+        saveDBToCloud();
+      }
+    } catch(err) {
+      alert("開場發生問題，已自動修復重啟：" + err);
       resetMatchState(1);
       renderAllLocal();
-      saveDBToCloud();
-      openConfigModal();
-    } else {
-      if (!confirm(`確定要結束【${DB.currentSession.name}】並封存嗎？\n本場共完成 ${DB.currentSession.matches.length} 將。`)) return;
-      closeAndArchiveSession();
-      renderAllLocal();
-      saveDBToCloud();
     }
   }
 
   function closeAndArchiveSession() {
     if (!DB.currentSession) return;
-    if (DB.currentSession.matches.length > 0) {
+    if (DB.currentSession.matches && DB.currentSession.matches.length > 0) {
       if (!DB.archivedSessions) DB.archivedSessions = [];
       DB.archivedSessions.unshift(DB.currentSession);
     }
@@ -590,10 +592,11 @@
 
   function resetMatchState(matchNum) {
     stateHistory = [];
+    const validSeats = (DB.roster && DB.roster.length >= 4) ? DB.roster.slice(0, 4) : ["安妮", "鴨鴨", "吉詳", "胖弟"];
     DB.currentMatch = {
-      base: (DB.currentMatch && DB.currentMatch.base) ? DB.currentMatch.base : 100,
-      pointPerTai: (DB.currentMatch && DB.currentMatch.pointPerTai) ? DB.currentMatch.pointPerTai : 20,
-      seats: (DB.currentMatch && DB.currentMatch.seats && DB.currentMatch.seats.length === 4) ? [...DB.currentMatch.seats] : DB.roster.slice(0, 4),
+      base: 100,
+      pointPerTai: 20,
+      seats: validSeats,
       scores: [0, 0, 0, 0],
       initialDealerIdx: 0,
       currentRoundWind: 0,
@@ -629,7 +632,8 @@
     const activeArea = document.getElementById("activeMatchArea");
 
     if (DB.currentSession) {
-      sessionTitle.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (已打 ${DB.currentSession.matches.length} 將)`;
+      const matchCount = DB.currentSession.matches ? DB.currentSession.matches.length : 0;
+      sessionTitle.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (已打 ${matchCount} 將)`;
       sessionBtn.innerText = "🏁 結束本場聚會並封存";
       sessionBtn.style.background = "#b91c1c";
       activeArea.style.display = "block";
@@ -642,13 +646,15 @@
     }
   }
 
-  // --- 關鍵修正：修復贏家/放槍者按鈕即時渲染 ---
   function renderMatchView() {
     if (!DB.currentSession) return;
     const match = DB.currentMatch;
     if (!match.history) match.history = [];
+    if (!match.seats || match.seats.length < 4) {
+      match.seats = (DB.roster && DB.roster.length >= 4) ? DB.roster.slice(0, 4) : ["安妮", "鴨鴨", "吉詳", "胖弟"];
+    }
 
-    const currentMatchNum = DB.currentSession.matches.length + 1;
+    const currentMatchNum = (DB.currentSession.matches ? DB.currentSession.matches.length : 0) + 1;
     document.getElementById("currentMatchIdxDisplay").innerText = currentMatchNum;
     document.getElementById("currentRoundTitle").innerText = match.isGameOver ? "本將完賽" : getRoundTitle(match.currentRoundWind, match.currentHandWind, match.consecutiveDeals);
 
@@ -668,13 +674,15 @@
 
     const dashboard = document.getElementById("playerDashboard");
     dashboard.innerHTML = "";
+    
+    // 時時排序
     const rankingIndices = [0, 1, 2, 3].sort((a, b) => match.scores[b] - match.scores[a]);
     const currentDealerIdx = getActualDealerIdx(match.initialDealerIdx, match.currentHandWind);
 
     match.seats.forEach((name, idx) => {
       const isDealer = (idx === currentDealerIdx);
       const isInitial = (idx === match.initialDealerIdx);
-      const score = match.scores[idx];
+      const score = match.scores[idx] || 0;
       const rank = rankingIndices.indexOf(idx) + 1;
       let scoreClass = score > 0 ? "score-pos" : (score < 0 ? "score-neg" : "score-zero");
 
@@ -693,7 +701,7 @@
       `;
     });
 
-    // 渲染贏家按鈕
+    // 贏家按鈕
     const winnerGroup = document.getElementById("winnerBtnGroup");
     winnerGroup.innerHTML = "";
     match.seats.forEach((name, idx) => {
@@ -704,7 +712,7 @@
       `;
     });
 
-    // 渲染輸家按鈕 (含自摸)
+    // 放槍者按鈕
     const loserGroup = document.getElementById("loserBtnGroup");
     loserGroup.innerHTML = "";
     const isZimoSelected = (currentInput.loserIdx === -1);
@@ -723,7 +731,7 @@
       `;
     });
 
-    // 渲染 1~10 台按鈕
+    // 1~10 台按鈕
     const isZimo = (currentInput.loserIdx === -1);
     document.getElementById("taiTypeLabel").innerText = `台數選擇 (${isZimo ? '自摸 1~10 台' : '胡牌 1~10 台'})`;
     const taiGroup = document.getElementById("taiBtnGroup");
@@ -753,7 +761,7 @@
   function selectWinner(idx) {
     currentInput.winnerIdx = idx;
     if (currentInput.loserIdx === idx) {
-      currentInput.loserIdx = -1; // 預設跳回自摸
+      currentInput.loserIdx = -1;
     }
     renderMatchView();
   }
@@ -845,20 +853,22 @@
           const pts = calcPoints(i);
           delta[i] -= pts;
           totalWon += pts;
-          DB.playerStats[match.seats[i]].beiMo += 1;
+          if (DB.playerStats[match.seats[i]]) DB.playerStats[match.seats[i]].beiMo += 1;
         }
       }
       delta[wIdx] += totalWon;
-      DB.playerStats[match.seats[wIdx]].mo += 1;
+      if (DB.playerStats[match.seats[wIdx]]) DB.playerStats[match.seats[wIdx]].mo += 1;
       desc = `${match.seats[wIdx]} 自摸 ${tai} 台${patternBadge}，共得 +${totalWon}`;
     } else {
       const pts = calcPoints(lIdx);
       delta[wIdx] += pts;
       delta[lIdx] -= pts;
-      DB.playerStats[match.seats[wIdx]].hu += 1;
-      DB.playerStats[match.seats[lIdx]].qiang += 1;
+      if (DB.playerStats[match.seats[wIdx]]) DB.playerStats[match.seats[wIdx]].hu += 1;
+      if (DB.playerStats[match.seats[lIdx]]) DB.playerStats[match.seats[lIdx]].qiang += 1;
       for (let i = 0; i < 4; i++) {
-        if (i !== wIdx && i !== lIdx) DB.playerStats[match.seats[i]].nothing += 1;
+        if (i !== wIdx && i !== lIdx) {
+          if (DB.playerStats[match.seats[i]]) DB.playerStats[match.seats[i]].nothing += 1;
+        }
       }
       desc = `${match.seats[wIdx]} 胡 ${match.seats[lIdx]} (${tai} 台)${patternBadge}，得 +${pts}`;
     }
@@ -898,7 +908,9 @@
     const dealerIdx = getActualDealerIdx(match.initialDealerIdx, match.currentHandWind);
 
     match.consecutiveDeals += 1;
-    for (let i = 0; i < 4; i++) DB.playerStats[match.seats[i]].nothing += 1;
+    for (let i = 0; i < 4; i++) {
+      if (DB.playerStats[match.seats[i]]) DB.playerStats[match.seats[i]].nothing += 1;
+    }
 
     if (!match.history) match.history = [];
     match.history.unshift({
@@ -961,7 +973,7 @@
     saveDBToCloud();
   }
 
-  // --- 特殊牌型彈窗邏輯 (預設 0、自動累加、手動微調) ---
+  // --- 特殊牌型多選累加邏輯 ---
   let tempSelectedSpecialIndices = new Set();
 
   function openSpecialModal() {
@@ -1103,7 +1115,7 @@
     const dongLeaderboardBody = document.getElementById("dongLeaderboardBody");
     dongLeaderboardBody.innerHTML = "";
 
-    const sortedDong = DB.roster.map(name => {
+    const sortedDong = (DB.roster || []).map(name => {
       const s = DB.playerDongStats[name] || { totalPaid: 0, zimoPaidCount: 0, diffPaidCount: 0 };
       totalAllSum += s.totalPaid;
       return { name, ...s };
@@ -1135,10 +1147,10 @@
 
     container.innerHTML = sessions.map((sess, sIdx) => {
       let totalSessDong = 0;
-      const dongDetailsHtml = sess.matches.map(m => {
+      const dongDetailsHtml = (sess.matches || []).map(m => {
         totalSessDong += (m.dongTotalPool || 100);
         const details = m.dongDetails || {};
-        const rows = m.seats.map(name => {
+        const rows = (m.seats || []).map(name => {
           const item = details[name] || { total: 0 };
           return `<span>${name}: <b>${item.total}</b> 點</span>`;
         }).join(" ｜ ");
@@ -1183,18 +1195,19 @@
   function archiveCurrentMatch(isEndingSession) {
     if (!DB.currentSession) return;
     const match = DB.currentMatch;
-    const currentMatchNum = DB.currentSession.matches.length + 1;
+    const currentMatchNum = (DB.currentSession.matches ? DB.currentSession.matches.length : 0) + 1;
     const { due, currentTotalPool } = calculateCurrentDongDetails();
 
     let confirmMsg = `確定結算第 ${currentMatchNum} 將？\n\n【東錢明細】\n`;
     match.seats.forEach(name => {
-      const d = due[name];
+      const d = due[name] || { total: 0, zimoCount: 0, diffCount: 0 };
       confirmMsg += `• ${name}：${d.total} 點 (自摸 ${d.zimoCount} / 差額 ${d.diffCount})\n`;
     });
 
     if (!confirm(confirmMsg)) return;
 
     match.seats.forEach((name, idx) => {
+      if (!DB.playerStats[name]) DB.playerStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
       DB.playerStats[name].totalScore += match.scores[idx];
       DB.playerStats[name].matchesPlayed += 1;
     });
@@ -1202,7 +1215,7 @@
     if (!DB.playerDongStats) DB.playerDongStats = {};
     match.seats.forEach(name => {
       if (!DB.playerDongStats[name]) DB.playerDongStats[name] = { totalPaid: 0, zimoPaidCount: 0, diffPaidCount: 0 };
-      const d = due[name];
+      const d = due[name] || { total: 0, zimoCount: 0, diffCount: 0 };
       DB.playerDongStats[name].totalPaid += d.total;
       DB.playerDongStats[name].zimoPaidCount += d.zimoCount;
       DB.playerDongStats[name].diffPaidCount += d.diffCount;
@@ -1210,6 +1223,7 @@
 
     DB.totalLeagueMatches += 1;
 
+    if (!DB.currentSession.matches) DB.currentSession.matches = [];
     DB.currentSession.matches.push({
       matchNumber: currentMatchNum,
       time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
@@ -1241,7 +1255,7 @@
     const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
     if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
       DB.currentMatch.seats.forEach((name, idx) => {
-        if (displayStats[name]) displayStats[name].totalScore += DB.currentMatch.scores[idx];
+        if (displayStats[name]) displayStats[name].totalScore += (DB.currentMatch.scores ? DB.currentMatch.scores[idx] : 0);
       });
     }
 
@@ -1281,10 +1295,10 @@
       const sessionScoreTotals = {};
       let totalSessionDong = 0;
 
-      sess.matches.forEach(m => {
+      (sess.matches || []).forEach(m => {
         totalSessionDong += (m.dongTotalPool || 100);
-        m.seats.forEach((name, i) => {
-          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + m.scores[i];
+        (m.seats || []).forEach((name, i) => {
+          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + (m.scores ? m.scores[i] : 0);
         });
       });
 
@@ -1295,9 +1309,9 @@
         return `<span>#${rank+1} ${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
       }).join(" ｜ ");
 
-      const matchesDetailsHtml = sess.matches.map(m => {
-        const rows = m.seats.map((name, i) => {
-          const sc = m.scores[i];
+      const matchesDetailsHtml = (sess.matches || []).map(m => {
+        const rows = (m.seats || []).map((name, i) => {
+          const sc = m.scores ? m.scores[i] : 0;
           const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
           return `<span>${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
         }).join(" ｜ ");
@@ -1318,7 +1332,7 @@
           <div class="session-archive-header" onclick="toggleSessionAccordion(${sIdx})">
             <div>
               <span style="font-size:14px; font-weight:bold; color:#fff;">📁 ${sess.name}</span>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} 完賽 ｜ 共 ${sess.matches.length} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} 完賽 ｜ 共 ${sess.matches ? sess.matches.length : 0} 將)</span>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:11px; color:var(--gold);">東錢 ${totalSessionDong} 點</span>
@@ -1355,8 +1369,8 @@
   function deleteArchivedSession(sIdx) {
     if (!confirm("確定要刪除這整個場次的紀錄嗎？這會扣除該場所有將次的積分與東錢！")) return;
     const sess = DB.archivedSessions[sIdx];
-    sess.matches.forEach(m => {
-      m.seats.forEach((name, i) => {
+    (sess.matches || []).forEach(m => {
+      (m.seats || []).forEach((name, i) => {
         if (DB.playerStats[name]) {
           DB.playerStats[name].totalScore -= m.scores[i];
           DB.playerStats[name].matchesPlayed = Math.max(0, DB.playerStats[name].matchesPlayed - 1);
@@ -1379,10 +1393,10 @@
 
   function renderRosterView() {
     const container = document.getElementById("rosterListContainer");
-    document.getElementById("rosterCountBadge").innerText = `共 ${DB.roster.length} 位`;
+    document.getElementById("rosterCountBadge").innerText = `共 ${(DB.roster || []).length} 位`;
     container.innerHTML = "";
-    DB.roster.forEach(name => {
-      const stats = DB.playerStats[name] || { totalScore: 0, matchesPlayed: 0 };
+    (DB.roster || []).forEach(name => {
+      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, matchesPlayed: 0 }) : { totalScore: 0, matchesPlayed: 0 };
       const dongStats = DB.playerDongStats ? (DB.playerDongStats[name] || { totalPaid: 0 }) : { totalPaid: 0 };
       container.innerHTML += `
         <div class="roster-item">
@@ -1404,15 +1418,15 @@
 
   function openCorrectionModal(name) {
     currentlyEditingPlayer = name;
-    const stats = DB.playerStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+    const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     document.getElementById("correctionModalTitle").innerText = `🛠️ 手動校正【${name}】數據 (不含東錢)`;
-    document.getElementById("corrTotalScore").value = stats.totalScore;
-    document.getElementById("corrMatchesPlayed").value = stats.matchesPlayed;
-    document.getElementById("corrHu").value = stats.hu;
-    document.getElementById("corrMo").value = stats.mo;
-    document.getElementById("corrQiang").value = stats.qiang;
-    document.getElementById("corrBeiMo").value = stats.beiMo;
-    document.getElementById("corrNothing").value = stats.nothing;
+    document.getElementById("corrTotalScore").value = stats.totalScore || 0;
+    document.getElementById("corrMatchesPlayed").value = stats.matchesPlayed || 0;
+    document.getElementById("corrHu").value = stats.hu || 0;
+    document.getElementById("corrMo").value = stats.mo || 0;
+    document.getElementById("corrQiang").value = stats.qiang || 0;
+    document.getElementById("corrBeiMo").value = stats.beiMo || 0;
+    document.getElementById("corrNothing").value = stats.nothing || 0;
     document.getElementById("correctionModal").classList.add("active");
   }
   function closeCorrectionModal() { document.getElementById("correctionModal").classList.remove("active"); }
@@ -1420,6 +1434,7 @@
   function savePlayerCorrection() {
     if (!currentlyEditingPlayer) return;
     const name = currentlyEditingPlayer;
+    if (!DB.playerStats) DB.playerStats = {};
     DB.playerStats[name] = {
       totalScore: parseInt(document.getElementById("corrTotalScore").value) || 0,
       matchesPlayed: parseInt(document.getElementById("corrMatchesPlayed").value) || 0,
@@ -1434,7 +1449,7 @@
     saveDBToCloud();
   }
 
-  // --- 關鍵修復：新增選手與即時全域寫入 ---
+  // --- 關鍵修復：新增選手保證雙向即時初始化 ---
   function addNewPlayer() {
     const input = document.getElementById("newPlayerNameInput");
     const name = input.value.trim();
@@ -1442,6 +1457,7 @@
       alert("請輸入選手姓名！");
       return;
     }
+    if (!DB.roster) DB.roster = [];
     if (DB.roster.includes(name)) {
       alert("此選手名稱已存在！");
       return;
@@ -1457,7 +1473,7 @@
     input.value = "";
     renderAllLocal();
     saveDBToCloud();
-    alert(`成功新增選手：${name}！已同步至各選單。`);
+    alert(`成功新增選手：${name}！已同步至名單與開局選單。`);
   }
 
   function editPlayerName(oldName) {
@@ -1476,11 +1492,14 @@
       delete DB.playerDongStats[oldName];
     }
 
-    DB.currentMatch.seats = DB.currentMatch.seats.map(s => s === oldName ? cleanName : s);
+    if (DB.currentMatch && DB.currentMatch.seats) {
+      DB.currentMatch.seats = DB.currentMatch.seats.map(s => s === oldName ? cleanName : s);
+    }
+
     (DB.archivedSessions || []).forEach(sess => {
-      sess.matches.forEach(m => {
+      (sess.matches || []).forEach(m => {
         m.seats = m.seats.map(s => s === oldName ? cleanName : s);
-        m.history.forEach(h => { h.text = h.text.replaceAll(oldName, cleanName); });
+        (m.history || []).forEach(h => { h.text = h.text.replaceAll(oldName, cleanName); });
       });
     });
     renderAllLocal();
@@ -1498,14 +1517,14 @@
   }
 
   function recalcPlayerStats() {
-    DB.roster.forEach(name => {
+    (DB.roster || []).forEach(name => {
       const prev = DB.playerStats[name] ? DB.playerStats[name].matchesPlayed : 0;
       DB.playerStats[name] = { totalScore: 0, matchesPlayed: prev, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     });
     (DB.archivedSessions || []).forEach(sess => {
-      sess.matches.forEach(m => {
+      (sess.matches || []).forEach(m => {
         m.seats.forEach((name, idx) => { if (DB.playerStats[name]) DB.playerStats[name].totalScore += m.scores[idx]; });
-        m.history.forEach(h => parseHistoryAction(h, m.seats));
+        (m.history || []).forEach(h => parseHistoryAction(h, m.seats));
       });
     });
     if (DB.currentSession) {
@@ -1531,33 +1550,52 @@
   }
 
   function openConfigModal() {
-    document.getElementById("cfgBase").value = (DB.currentMatch && DB.currentMatch.base) ? DB.currentMatch.base : 100;
-    document.getElementById("cfgTai").value = (DB.currentMatch && DB.currentMatch.pointPerTai) ? DB.currentMatch.pointPerTai : 20;
+    const match = DB.currentMatch || {};
+    document.getElementById("cfgBase").value = match.base || 100;
+    document.getElementById("cfgTai").value = match.pointPerTai || 20;
+
+    const rosterList = (DB.roster && DB.roster.length >= 4) ? DB.roster : DEFAULT_ROSTER;
+    const currentSeats = (match.seats && match.seats.length === 4) ? match.seats : rosterList.slice(0, 4);
+
     for (let i = 0; i < 4; i++) {
-      document.getElementById(`seat${i}`).innerHTML = DB.roster.map(name => `<option value="${name}" ${name === DB.currentMatch.seats[i] ? 'selected' : ''}>${name}</option>`).join("");
+      const seatEl = document.getElementById(`seat${i}`);
+      seatEl.innerHTML = rosterList.map(name => `<option value="${name}" ${name === currentSeats[i] ? 'selected' : ''}>${name}</option>`).join("");
     }
     updateInitialDealerDropdown();
     document.getElementById("configModal").classList.add("active");
   }
+
   function closeConfigModal() { document.getElementById("configModal").classList.remove("active"); }
+
   function updateInitialDealerDropdown() {
     const sel = document.getElementById("initialDealerSelect");
     sel.innerHTML = "";
     for (let i = 0; i < 4; i++) {
-      const name = document.getElementById(`seat${i}`).value;
-      sel.innerHTML += `<option value="${i}" ${i === DB.currentMatch.initialDealerIdx ? 'selected' : ''}>${name} (座位 ${i+1})</option>`;
+      const seatEl = document.getElementById(`seat${i}`);
+      const name = seatEl ? seatEl.value : `選手${i+1}`;
+      sel.innerHTML += `<option value="${i}" ${i === (DB.currentMatch ? DB.currentMatch.initialDealerIdx : 0) ? 'selected' : ''}>${name} (座位 ${i+1})</option>`;
     }
   }
-  for (let i = 0; i < 4; i++) document.getElementById(`seat${i}`).addEventListener("change", updateInitialDealerDropdown);
+
+  for (let i = 0; i < 4; i++) {
+    const seatEl = document.getElementById(`seat${i}`);
+    if (seatEl) seatEl.addEventListener("change", updateInitialDealerDropdown);
+  }
+
   function saveConfig() {
-    const newSeats = [document.getElementById("seat0").value, document.getElementById("seat1").value, document.getElementById("seat2").value, document.getElementById("seat3").value];
+    const newSeats = [
+      document.getElementById("seat0").value,
+      document.getElementById("seat1").value,
+      document.getElementById("seat2").value,
+      document.getElementById("seat3").value
+    ];
     if (new Set(newSeats).size !== 4) { alert("4 個座位不能重複！"); return; }
     saveSnapshot();
     const match = DB.currentMatch;
     match.base = parseInt(document.getElementById("cfgBase").value) || 100;
     match.pointPerTai = parseInt(document.getElementById("cfgTai").value) || 20;
     match.seats = newSeats;
-    match.initialDealerIdx = parseInt(document.getElementById("initialDealerSelect").value);
+    match.initialDealerIdx = parseInt(document.getElementById("initialDealerSelect").value) || 0;
     match.currentRoundWind = 0; match.currentHandWind = 0; match.consecutiveDeals = 0; match.isGameOver = false;
     closeConfigModal();
     renderAllLocal();
