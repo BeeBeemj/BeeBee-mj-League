@@ -44,6 +44,32 @@
     table.stats-table th, table.stats-table td { padding: 8px 4px; border-bottom: 1px solid var(--card-border); white-space: nowrap; }
     table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .highlight-cell { font-weight: bold; font-family: monospace; }
+
+    /* 兩層折疊式卡片 */
+    .session-archive-card {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .session-archive-header {
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      user-select: none;
+    }
+    .session-archive-header:hover { background: #243247; }
+    .session-detail-panel {
+      padding: 12px;
+      background: #0b1120;
+      border-top: 1px solid var(--card-border);
+      display: none;
+    }
+    .session-detail-panel.open { display: block; }
   </style>
 </head>
 <body>
@@ -68,7 +94,7 @@
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率排行)</span>
-      <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 將</span>
+      <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
     </div>
     <div class="stats-table-wrapper">
       <table class="stats-table">
@@ -89,13 +115,13 @@
     </div>
   </div>
 
-  <!-- 歷將戰報 -->
+  <!-- 歷場戰報 (兩層式折疊) -->
   <div class="card">
     <div class="card-title">
-      <span>📜 歷將戰報</span>
-      <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 將</span>
+      <span>📜 歷場戰報 (點擊場次展開明細)</span>
+      <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
     </div>
-    <div id="archivedMatchesContainer" style="max-height: 400px; overflow-y: auto;"></div>
+    <div id="archivedSessionsContainer"></div>
   </div>
 </div>
 
@@ -118,13 +144,14 @@
     if (!DB) return;
 
     const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
-    if (DB.currentMatch && DB.currentMatch.seats) {
+    if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
       DB.currentMatch.seats.forEach((name, idx) => {
         if (displayStats[name]) displayStats[name].totalScore += (DB.currentMatch.scores ? DB.currentMatch.scores[idx] : 0);
       });
     }
 
-    document.getElementById("leagueMatchesTotal").innerText = `累計：${DB.totalLeagueMatches || 0} 將`;
+    const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
+    document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
 
     const playerMetrics = (DB.roster || []).map(name => {
       const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
@@ -170,37 +197,89 @@
       `;
     });
 
-    const container = document.getElementById("archivedMatchesContainer");
-    const archived = DB.archivedMatches || [];
-    document.getElementById("matchArchiveCount").innerText = `共 ${archived.length} 將`;
+    // 渲染歷場戰報
+    const container = document.getElementById("archivedSessionsContainer");
+    const sessions = DB.archivedSessions || [];
+    document.getElementById("matchArchiveCount").innerText = `共 ${sessions.length} 場`;
 
-    if (archived.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無已完賽將次</div>`;
+    if (sessions.length === 0) {
+      container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無已封存場次</div>`;
       return;
     }
 
-    container.innerHTML = archived.map(m => {
-      const seatResults = m.seats.map((name, i) => {
-        const score = m.scores[i];
-        const color = score > 0 ? 'var(--win)' : (score < 0 ? 'var(--lose)' : 'var(--text-muted)');
-        return `<span>${name}: <b style="color:${color};">${score > 0 ? '+'+score : score}</b></span>`;
+    container.innerHTML = sessions.map((sess, sIdx) => {
+      const sessionScoreTotals = {};
+      let totalSessionDong = 0;
+
+      sess.matches.forEach(m => {
+        totalSessionDong += (m.dongTotalPool || 100);
+        m.seats.forEach((name, i) => {
+          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + m.scores[i];
+        });
+      });
+
+      const totalScoreBadges = Object.keys(sessionScoreTotals).map(name => {
+        const sc = sessionScoreTotals[name];
+        const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
+        return `<span>${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
       }).join(" ｜ ");
 
-      return `
-        <div style="background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 4px;">
-            <span style="color: var(--gold);">第 ${m.matchNumber} 將完賽</span>
-            <span style="color: var(--text-muted); font-size: 11px;">${m.date}</span>
+      const matchesDetailsHtml = sess.matches.map(m => {
+        const rows = m.seats.map((name, i) => {
+          const sc = m.scores[i];
+          const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
+          return `<span>${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
+        }).join(" ｜ ");
+
+        return `
+          <div style="background:#1e293b; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-bottom:6px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; color:var(--gold); margin-bottom:4px;">
+              <span>第 ${m.matchNumber} 將 (${m.time})</span>
+              <span style="color:var(--text-muted);">東錢池：${m.dongTotalPool || 100} 點</span>
+            </div>
+            <div style="font-size:12px; line-height:1.5;">${rows}</div>
           </div>
-          <div style="font-size: 13px; line-height: 1.5;">${seatResults}</div>
+        `;
+      }).join("");
+
+      return `
+        <div class="session-archive-card">
+          <div class="session-archive-header" onclick="togglePublicSessionAccordion(${sIdx})">
+            <div>
+              <span style="font-size:14px; font-weight:bold; color:#fff;">📁 ${sess.name}</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 共 ${sess.matches.length} 將)</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:11px; color:var(--gold);">東錢 ${totalSessionDong} 點</span>
+              <span style="font-size:12px; color:var(--primary);" id="pubArrowIcon-${sIdx}">▼ 展開</span>
+            </div>
+          </div>
+          <div class="session-detail-panel" id="pubSessionPanel-${sIdx}">
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px dashed var(--card-border);">
+              <b>【當日全場結算總計】</b><br>${totalScoreBadges}
+            </div>
+            <div style="font-size:12px; font-weight:bold; color:#fff; margin-bottom:6px;">【各將獨立戰報】</div>
+            ${matchesDetailsHtml}
+          </div>
         </div>
       `;
     }).join("");
   });
 
+  function togglePublicSessionAccordion(sIdx) {
+    const panel = document.getElementById(`pubSessionPanel-${sIdx}`);
+    const arrow = document.getElementById(`pubArrowIcon-${sIdx}`);
+    if (panel.classList.contains("open")) {
+      panel.classList.remove("open");
+      arrow.innerText = "▼ 展開";
+    } else {
+      panel.classList.add("open");
+      arrow.innerText = "▲ 收合";
+    }
+  }
+
   function renderAwards(players) {
     if (players.length === 0) return;
-
     const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
     const topScore = findTop('totalScore');
     const topZimo = findTop('zimoRate');
