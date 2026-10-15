@@ -3,14 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>麻將聯賽 - 記分管理後台</title>
-  <!-- apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
-  authDomain: "beebee-mj.firebaseapp.com",
-  databaseURL: "https://beebee-mj-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "beebee-mj",
-  storageBucket: "beebee-mj.firebasestorage.app",
-  messagingSenderId: "455969527844",
-  appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1" -->
+  <title>BeeBee 麻將聯賽 - 後台記分系統</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -37,11 +30,11 @@
     .container { max-width: 720px; margin: 0 auto; }
     .tab-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
     .tab-btn {
-      padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
+      padding: 10px 2px; background: #1e293b; border: 1px solid var(--card-border);
       border-radius: 8px; color: var(--text-muted); font-size: 13px; font-weight: 700; cursor: pointer; text-align: center;
     }
     .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #0b1120; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     .wind-badge { font-size: 15px; font-weight: 900; color: var(--gold); background: #2d2415; border: 1px solid #78350f; padding: 2px 8px; border-radius: 6px; }
     .player-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -114,7 +107,7 @@
     <div class="tab-btn" id="tabRosterBtn" onclick="switchTab('roster')">⚙️ 選手後台</div>
   </div>
 
-  <!-- 當前戰局 -->
+  <!-- 頁面 1：當前戰局 -->
   <div id="pageMatch">
     <div class="game-over-banner" id="gameOverBanner">
       🏆 本將牌局已結束 (北風北完賽)！
@@ -170,7 +163,7 @@
     </div>
   </div>
 
-  <!-- 生涯總榜 -->
+  <!-- 頁面 2：生涯總榜 -->
   <div id="pageLeaderboard" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -197,7 +190,7 @@
     </div>
   </div>
 
-  <!-- 歷將戰報 -->
+  <!-- 頁面 3：歷將戰報 -->
   <div id="pageHistory" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -208,7 +201,7 @@
     </div>
   </div>
 
-  <!-- 選手後台 -->
+  <!-- 頁面 4：選手後台 -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增選手</span></div>
@@ -285,18 +278,17 @@
 </div>
 
 <script>
-  // =================== 請替換為您的 Firebase 專案設定 ===================
+  // Firebase 設定
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
+    authDomain: "beebee-mj.firebaseapp.com",
+    databaseURL: "https://beebee-mj-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "beebee-mj",
+    storageBucket: "beebee-mj.firebasestorage.app",
+    messagingSenderId: "455969527844",
+    appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
-  const ADMIN_PASSWORD = "888"; // 自訂您的後台進入密碼
-  // ======================================================================
+  const ADMIN_PASSWORD = "3333";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
@@ -312,7 +304,7 @@
       stats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     });
     return {
-      version: 8,
+      version: 9,
       roster: [...DEFAULT_ROSTER],
       matchCount: 1,
       totalLeagueMatches: 0,
@@ -338,7 +330,7 @@
       initFirebaseSync();
     } else {
       alert("密碼錯誤，拒絕進入。");
-      window.location.href = "index.html"; // 導向公開頁
+      window.location.href = "beebee-mj-index.html";
     }
   }
 
@@ -346,6 +338,11 @@
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
       if (val) {
+        if (!val.currentMatch) val.currentMatch = createInitialDB().currentMatch;
+        if (!val.currentMatch.history) val.currentMatch.history = [];
+        if (!val.playerStats) val.playerStats = createInitialDB().playerStats;
+        if (!val.roster) val.roster = Object.keys(val.playerStats);
+        if (!val.archivedMatches) val.archivedMatches = [];
         DB = val;
         renderAllLocal();
       } else {
@@ -396,6 +393,8 @@
 
   function renderMatchView() {
     const match = DB.currentMatch;
+    if (!match.history) match.history = [];
+
     document.getElementById("currentMatchIdxDisplay").innerText = DB.matchCount;
     document.getElementById("currentRoundTitle").innerText = match.isGameOver ? "本將完賽" : getRoundTitle(match.currentRoundWind, match.currentHandWind, match.consecutiveDeals);
 
@@ -484,6 +483,7 @@
       if (!isNaN(parsed)) {
         saveSnapshot();
         DB.currentMatch.scores[seatIdx] = parsed;
+        renderAllLocal();
         saveDBToCloud();
       }
     }
@@ -587,6 +587,7 @@
 
     for (let i = 0; i < 4; i++) match.scores[i] += delta[i];
 
+    if (!match.history) match.history = [];
     match.history.unshift({ roundTitle: currentTitle, text: desc, delta: [...delta], patterns: [...currentInput.specialPatterns] });
 
     if (wIdx === dealerIdx) {
@@ -599,6 +600,8 @@
     currentInput.isSpecial = false;
     currentInput.specialPatterns = [];
 
+    // 關鍵修復：立即在本地端重繪，絕無延遲
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -613,12 +616,14 @@
     match.consecutiveDeals += 1;
     for (let i = 0; i < 4; i++) DB.playerStats[match.seats[i]].nothing += 1;
 
+    if (!match.history) match.history = [];
     match.history.unshift({
       roundTitle: currentTitle,
       text: `流局 (平局) - 莊家 ${match.seats[dealerIdx]} 連 ${match.consecutiveDeals}`,
       delta: [0, 0, 0, 0], patterns: []
     });
 
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -637,12 +642,13 @@
     if (stateHistory.length === 0) { alert("目前沒有可撤銷紀錄！"); return; }
     DB.currentMatch = stateHistory.pop();
     recalcPlayerStats();
+    renderAllLocal();
     saveDBToCloud();
   }
 
   function renderMatchHistory() {
     const list = document.getElementById("historyList");
-    const history = DB.currentMatch.history;
+    const history = DB.currentMatch.history || [];
     if (history.length === 0) {
       list.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 10px;">本將尚未有牌局紀錄</div>`;
       return;
@@ -664,6 +670,7 @@
     }
     DB.currentMatch.history.splice(index, 1);
     recalcPlayerStats();
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -675,10 +682,11 @@
       DB.playerStats[name].matchesPlayed += 1;
     });
     DB.totalLeagueMatches += 1;
+    if (!DB.archivedMatches) DB.archivedMatches = [];
     DB.archivedMatches.unshift({
       matchNumber: DB.matchCount,
       date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      seats: [...match.seats], scores: [...match.scores], history: [...match.history]
+      seats: [...match.seats], scores: [...match.scores], history: [...(match.history || [])]
     });
     DB.matchCount += 1;
     stateHistory = [];
@@ -687,6 +695,7 @@
       scores: [0, 0, 0, 0], initialDealerIdx: match.initialDealerIdx,
       currentRoundWind: 0, currentHandWind: 0, consecutiveDeals: 0, isGameOver: false, history: []
     };
+    renderAllLocal();
     saveDBToCloud();
     switchTab('leaderboard');
   }
@@ -694,14 +703,16 @@
   function renderLeaderboard() {
     const tbody = document.getElementById("leagueLeaderboardBody");
     tbody.innerHTML = "";
-    document.getElementById("totalLeagueMatchesCountDisplay").innerText = `聯賽總將數：${DB.totalLeagueMatches} 將`;
+    document.getElementById("totalLeagueMatchesCountDisplay").innerText = `聯賽總將數：${DB.totalLeagueMatches || 0} 將`;
 
-    const displayStats = JSON.parse(JSON.stringify(DB.playerStats));
-    DB.currentMatch.seats.forEach((name, idx) => {
-      if (displayStats[name]) displayStats[name].totalScore += DB.currentMatch.scores[idx];
-    });
+    const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
+    if (DB.currentMatch && DB.currentMatch.seats) {
+      DB.currentMatch.seats.forEach((name, idx) => {
+        if (displayStats[name]) displayStats[name].totalScore += DB.currentMatch.scores[idx];
+      });
+    }
 
-    const sorted = DB.roster.map(name => ({
+    const sorted = (DB.roster || []).map(name => ({
       name, ...(displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 })
     })).sort((a, b) => b.totalScore - a.totalScore);
 
@@ -724,12 +735,13 @@
 
   function renderArchivedMatches() {
     const container = document.getElementById("archivedMatchesContainer");
-    document.getElementById("totalMatchesArchived").innerText = `共 ${DB.archivedMatches.length} 將`;
-    if (DB.archivedMatches.length === 0) {
+    const archived = DB.archivedMatches || [];
+    document.getElementById("totalMatchesArchived").innerText = `共 ${archived.length} 將`;
+    if (archived.length === 0) {
       container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無已歸檔紀錄</div>`;
       return;
     }
-    container.innerHTML = DB.archivedMatches.map((m, mIdx) => {
+    container.innerHTML = archived.map((m, mIdx) => {
       const seatResults = m.seats.map((name, i) => {
         const score = m.scores[i];
         const color = score > 0 ? 'var(--win)' : (score < 0 ? 'var(--lose)' : 'var(--text-muted)');
@@ -760,8 +772,9 @@
       }
     });
     DB.archivedMatches.splice(archivedIndex, 1);
-    DB.totalLeagueMatches = Math.max(0, DB.totalLeagueMatches - 1);
+    DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - 1);
     recalcPlayerStats();
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -817,6 +830,7 @@
       nothing: parseInt(document.getElementById("corrNothing").value) || 0
     };
     closeCorrectionModal();
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -827,6 +841,7 @@
     DB.roster.push(name);
     DB.playerStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     input.value = "";
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -841,10 +856,11 @@
     DB.playerStats[cleanName] = DB.playerStats[oldName];
     delete DB.playerStats[oldName];
     DB.currentMatch.seats = DB.currentMatch.seats.map(s => s === oldName ? cleanName : s);
-    DB.archivedMatches.forEach(m => {
+    (DB.archivedMatches || []).forEach(m => {
       m.seats = m.seats.map(s => s === oldName ? cleanName : s);
       m.history.forEach(h => { h.text = h.text.replaceAll(oldName, cleanName); });
     });
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -853,6 +869,7 @@
     if (!confirm(`確定刪除選手【${name}】？`)) return;
     DB.roster = DB.roster.filter(n => n !== name);
     delete DB.playerStats[name];
+    renderAllLocal();
     saveDBToCloud();
   }
 
@@ -861,11 +878,11 @@
       const prev = DB.playerStats[name] ? DB.playerStats[name].matchesPlayed : 0;
       DB.playerStats[name] = { totalScore: 0, matchesPlayed: prev, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
     });
-    DB.archivedMatches.forEach(m => {
+    (DB.archivedMatches || []).forEach(m => {
       m.seats.forEach((name, idx) => { if (DB.playerStats[name]) DB.playerStats[name].totalScore += m.scores[idx]; });
       m.history.forEach(h => parseHistoryAction(h, m.seats));
     });
-    DB.currentMatch.history.forEach(h => parseHistoryAction(h, DB.currentMatch.seats));
+    (DB.currentMatch.history || []).forEach(h => parseHistoryAction(h, DB.currentMatch.seats));
   }
 
   function parseHistoryAction(h, seats) {
@@ -939,6 +956,7 @@
     match.initialDealerIdx = parseInt(document.getElementById("initialDealerSelect").value);
     match.currentRoundWind = 0; match.currentHandWind = 0; match.consecutiveDeals = 0; match.isGameOver = false;
     closeConfigModal();
+    renderAllLocal();
     saveDBToCloud();
   }
 
