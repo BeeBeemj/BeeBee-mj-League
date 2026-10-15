@@ -32,20 +32,8 @@
     .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     
-    /* 趣味榮譽卡片網格 */
-    .awards-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .award-card {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 10px;
-      position: relative;
-    }
+    .awards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .award-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; position: relative; }
     .award-card.full-width { grid-column: span 2; }
     .award-title { font-size: 12px; font-weight: bold; color: var(--gold); margin-bottom: 4px; }
     .award-player { font-size: 16px; font-weight: 900; color: #fff; }
@@ -76,7 +64,7 @@
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
 
-  <!-- 1. 生涯總積分勝率榜 -->
+  <!-- 生涯總積分勝率榜 (純勝負) -->
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率排行)</span>
@@ -138,7 +126,6 @@
 
     document.getElementById("leagueMatchesTotal").innerText = `累計：${DB.totalLeagueMatches || 0} 將`;
 
-    // 1. 計算每位選手參與的總局數與比率指標
     const playerMetrics = (DB.roster || []).map(name => {
       const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
       const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
@@ -161,10 +148,8 @@
       };
     });
 
-    // 2. 渲染 7 大趣味榮譽榜
     renderAwards(playerMetrics);
 
-    // 3. 渲染主排行榜 (依照總積分勝率)
     const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
     const tbody = document.getElementById("leaderboardBody");
     tbody.innerHTML = "";
@@ -185,7 +170,6 @@
       `;
     });
 
-    // 4. 渲染歷將戰報
     const container = document.getElementById("archivedMatchesContainer");
     const archived = DB.archivedMatches || [];
     document.getElementById("matchArchiveCount").innerText = `共 ${archived.length} 將`;
@@ -202,10 +186,6 @@
         return `<span>${name}: <b style="color:${color};">${score > 0 ? '+'+score : score}</b></span>`;
       }).join(" ｜ ");
 
-      const dongNotes = (m.dongLog && m.dongLog.length > 0) 
-        ? `<div style="font-size: 11px; color: var(--gold); margin-top: 4px;">• 東錢補扣：${m.dongLog.join("；")}</div>` 
-        : "";
-
       return `
         <div style="background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 4px;">
@@ -213,7 +193,6 @@
             <span style="color: var(--text-muted); font-size: 11px;">${m.date}</span>
           </div>
           <div style="font-size: 13px; line-height: 1.5;">${seatResults}</div>
-          ${dongNotes}
         </div>
       `;
     }).join("");
