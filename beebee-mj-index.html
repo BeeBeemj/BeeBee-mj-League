@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BeeBee 麻將聯賽 - 即時戰報與榮譽榜</title>
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -20,7 +19,7 @@
       --gold: #f59e0b;
       --accent: #6366f1;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", sans-serif;
       background: var(--bg);
@@ -41,13 +40,7 @@
       padding: 14px;
       margin-bottom: 12px;
     }
-    .idle-box {
-      text-align: center;
-      padding: 24px 12px;
-      color: #cbd5e1;
-      font-size: 14px;
-      line-height: 1.8;
-    }
+    .idle-box { text-align: center; padding: 24px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.8; }
     .idle-emoji { font-size: 32px; display: block; margin-bottom: 8px; }
 
     .awards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
@@ -63,12 +56,8 @@
     table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .highlight-cell { font-weight: bold; font-family: monospace; }
 
-    /* 歷場戰報折疊樣式 */
     .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-    .session-archive-header { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
-    .session-archive-header:hover { background: #243247; }
-    .session-detail-panel { padding: 12px; background: #0b1120; border-top: 1px solid var(--card-border); display: none; }
-    .session-detail-panel.open { display: block; }
+    .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
 
     .btn-pill {
       background: #0f172a; border: 1px solid var(--card-border); color: #fff;
@@ -76,63 +65,6 @@
     }
     .btn-pill.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .trend-chart-box { width: 100%; height: 150px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
-
-    /* 個人專頁：三層階梯折疊樣式 */
-    .p-session-card {
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      margin-bottom: 8px;
-      overflow: hidden;
-    }
-    .p-session-head {
-      padding: 8px 10px;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #243247;
-      user-select: none;
-    }
-    .p-session-body {
-      padding: 8px;
-      display: none;
-      background: #0f172a;
-    }
-    .p-session-body.open { display: block; }
-
-    .p-match-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      overflow: hidden;
-    }
-    .p-match-head {
-      padding: 6px 8px;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #182234;
-      font-size: 12px;
-      user-select: none;
-    }
-    .p-match-body {
-      padding: 6px 8px;
-      display: none;
-      background: #0b1120;
-      font-size: 11px;
-      border-top: 1px dashed #334155;
-    }
-    .p-match-body.open { display: block; }
-    .p-round-row {
-      padding: 3px 0;
-      border-bottom: 1px solid #1e293b;
-      display: flex;
-      justify-content: space-between;
-      color: #cbd5e1;
-    }
   </style>
 </head>
 <body>
@@ -144,7 +76,7 @@
     </div>
   </div>
 
-  <!-- 1. 今日聚會即時戰況 (未開場顯示搞笑台詞) -->
+  <!-- 1. 今日聚會即時動態 -->
   <div class="today-live-box" id="todaySessionSection">
     <div class="idle-box">
       <span class="idle-emoji">🀄🍵</span>
@@ -153,16 +85,15 @@
     </div>
   </div>
 
-  <!-- 2. 7 大趣味榮譽榜 -->
+  <!-- 2. 榮譽榜 -->
   <div class="card">
     <div class="card-title">
       <span>👑 聯賽數據榮譽榜</span>
-      <span style="font-size: 11px; color: var(--text-muted);">局數比率排名</span>
     </div>
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
 
-  <!-- 3. 生涯總積分榜 (移至榮譽榜正下方) -->
+  <!-- 3. 生涯總積分榜 (勝率嚴格排序，純選手排技，不含東哥) -->
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
@@ -175,12 +106,9 @@
             <th>名次</th>
             <th>選手</th>
             <th>總積分</th>
-            <th>出賽將數</th>
-            <th style="color: var(--win);">胡</th>
-            <th style="color: #6ee7b7;">摸</th>
-            <th style="color: var(--lose);">槍</th>
-            <th style="color: #fda4af;">被摸</th>
-            <th style="color: var(--text-muted);">沒事</th>
+            <th>出賽場數</th>
+            <th>出賽總將數</th>
+            <th>場勝率</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody"></tbody>
@@ -188,10 +116,10 @@
     </div>
   </div>
 
-  <!-- 4. 選手個人專頁 (走勢圖 + 場/將/局 三層詳細戰績) -->
+  <!-- 4. 選手個人專頁 (走勢與歷場戰績) -->
   <div class="card">
     <div class="card-title">
-      <span>👤 選手個人專頁 (走勢與場/將/局明細)</span>
+      <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
     </div>
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;" id="publicPlayerPills"></div>
     <div id="publicPlayerDetailBox" style="display:none; background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border);">
@@ -206,28 +134,15 @@
         </div>
       </div>
       <div class="trend-chart-box" id="pubTrendChartBox"></div>
-      <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場出賽戰績 (點擊展開將/局明細)：</div>
-      <div id="pubDetailMatchList" style="max-height:360px; overflow-y:auto;"></div>
+      <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場戰報：</div>
+      <div id="pubDetailMatchList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
     </div>
   </div>
 
-  <!-- 5. 名局榮譽榜 (前五大連莊 + 前五大滿貫大牌) -->
+  <!-- 5. 歷場戰報 (選手勝負 + 東哥分開展示) -->
   <div class="card">
     <div class="card-title">
-      <span>🔥 歷史五大連莊神局</span>
-    </div>
-    <div id="topDealersContainer" style="font-size:13px;"></div>
-
-    <div class="card-title" style="margin-top:16px;">
-      <span>⚡ 歷史五大滿貫牌型表揚</span>
-    </div>
-    <div id="topBigWinsContainer" style="font-size:13px;"></div>
-  </div>
-
-  <!-- 6. 歷場戰報 (純勝負，絕無東錢) -->
-  <div class="card">
-    <div class="card-title">
-      <span>📜 歷場戰報 (點擊場次展開明細)</span>
+      <span>📜 歷場完賽戰報</span>
       <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
     </div>
     <div id="archivedSessionsContainer"></div>
@@ -255,11 +170,10 @@
     archivedSessions: []
   };
   DEFAULT_ROSTER.forEach(name => {
-    currentDB.playerStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
+    currentDB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
   });
 
   let pubSelectedPlayer = null;
-
   renderAllData(currentDB);
 
   firebase.initializeApp(firebaseConfig);
@@ -270,57 +184,36 @@
       const val = snapshot.val();
       if (val) {
         currentDB = val;
-        if (!currentDB.roster || currentDB.roster.length === 0) {
-          currentDB.roster = Object.keys(currentDB.playerStats || {});
-        }
-        if (currentDB.roster.length === 0) currentDB.roster = [...DEFAULT_ROSTER];
         renderAllData(currentDB);
       }
     } catch(err) {
-      console.error("前台即時渲染異常捕獲：", err);
+      console.error("前台渲染異常：", err);
     }
   });
 
   function renderAllData(DB) {
     renderTodayLiveSection(DB);
 
-    const displayStats = JSON.parse(JSON.stringify(DB.playerStats || {}));
-    if (DB.currentSession && DB.currentMatch && DB.currentMatch.seats) {
-      DB.currentMatch.seats.forEach((name, idx) => {
-        if (!displayStats[name]) displayStats[name] = { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
-        displayStats[name].totalScore += (DB.currentMatch.scores ? (DB.currentMatch.scores[idx] || 0) : 0);
-      });
-    }
-
     const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
     document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
 
     const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
     const playerMetrics = rosterList.map(name => {
-      const p = displayStats[name] || { totalScore: 0, matchesPlayed: 0, hu: 0, mo: 0, qiang: 0, beiMo: 0, nothing: 0 };
-      const totalRounds = (p.hu || 0) + (p.mo || 0) + (p.qiang || 0) + (p.beiMo || 0) + (p.nothing || 0);
+      const p = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+      const winRateNum = p.sessionsPlayed > 0 ? (p.winsCount / p.sessionsPlayed) : 0;
       return {
         name,
         totalScore: p.totalScore || 0,
+        sessionsPlayed: p.sessionsPlayed || 0,
         matchesPlayed: p.matchesPlayed || 0,
-        hu: p.hu || 0,
-        mo: p.mo || 0,
-        qiang: p.qiang || 0,
-        beiMo: p.beiMo || 0,
-        nothing: p.nothing || 0,
-        totalRounds,
-        zimoRate: totalRounds > 0 ? (p.mo / totalRounds) : 0,
-        huRate: totalRounds > 0 ? (p.hu / totalRounds) : 0,
-        laohuRate: totalRounds > 0 ? ((p.hu + p.mo) / totalRounds) : 0,
-        qiangRate: totalRounds > 0 ? (p.qiang / totalRounds) : 0,
-        peidaRate: totalRounds > 0 ? (p.nothing / totalRounds) : 0,
-        ashuaiRate: totalRounds > 0 ? (p.beiMo / totalRounds) : 0
+        winsCount: p.winsCount || 0,
+        winRateNum,
+        winRate: (winRateNum * 100).toFixed(1) + "%"
       };
     });
 
-    renderAwards(playerMetrics);
+    renderAwards(playerMetrics, DB.archivedSessions || []);
 
-    // 嚴格由高到低排序總榜
     const sorted = [...playerMetrics].sort((a, b) => b.totalScore - a.totalScore);
     const tbody = document.getElementById("leaderboardBody");
     tbody.innerHTML = "";
@@ -332,27 +225,17 @@
           <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
           <td style="font-weight: bold; text-align: left;">${p.name}</td>
           <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
-          <td style="font-weight: bold;">${p.matchesPlayed}</td>
-          <td style="color: var(--win); font-weight: bold;">${p.hu}</td>
-          <td style="color: #6ee7b7; font-weight: bold;">${p.mo}</td>
-          <td style="color: var(--lose); font-weight: bold;">${p.qiang}</td>
-          <td style="color: #fda4af;">${p.beiMo}</td>
-          <td style="color: var(--text-muted);">${p.nothing}</td>
+          <td>${p.sessionsPlayed}</td>
+          <td>${p.matchesPlayed}</td>
+          <td style="color:var(--gold); font-weight:bold;">${p.winRate}</td>
         </tr>
       `;
     });
 
-    // 選手專頁
     renderPublicPlayerPills(DB);
-
-    // 名局榜
-    renderHallOfFame(DB);
-
-    // 歷場戰報
     renderArchivedSessions(DB.archivedSessions || []);
   }
 
-  // 渲染今日專區
   function renderTodayLiveSection(DB) {
     const container = document.getElementById("todaySessionSection");
     if (!DB.currentSession) {
@@ -366,45 +249,25 @@
       return;
     }
 
-    const todayScores = {};
     const sess = DB.currentSession;
-    (sess.matches || []).forEach(m => {
-      (m.seats || []).forEach((name, i) => {
-        todayScores[name] = (todayScores[name] || 0) + (m.scores ? m.scores[i] : 0);
-      });
-    });
+    const playerChips = (sess.players || []).map(name => `
+      <span style="background:#1e293b; border:1px solid #4f46e5; color:#fff; padding:4px 10px; border-radius:15px; font-size:13px; font-weight:bold;">
+        ${name}
+      </span>
+    `).join("");
 
-    if (DB.currentMatch && DB.currentMatch.seats) {
-      DB.currentMatch.seats.forEach((name, i) => {
-        todayScores[name] = (todayScores[name] || 0) + (DB.currentMatch.scores ? (DB.currentMatch.scores[i] || 0) : 0);
-      });
-    }
-
-    const sortedPlayers = Object.keys(todayScores).sort((a, b) => todayScores[b] - todayScores[a]);
-    const scoreItems = sortedPlayers.map((name, rank) => {
-      const sc = todayScores[name];
-      const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
-      return `
-        <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:6px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:bold; font-size:14px;"><span style="color:var(--gold); font-size:12px;">#${rank+1}</span> ${name}</span>
-          <span style="color:${color}; font-weight:800; font-family:monospace; font-size:16px;">${sc > 0 ? '+'+sc : sc}</span>
-        </div>
-      `;
-    }).join("");
-
-    const currentMatchNum = (sess.matches ? sess.matches.length : 0) + 1;
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span style="font-size:15px; font-weight:bold; color:#fff;">🔥 ${sess.name} (激戰中)</span>
-        <span style="font-size:12px; color:var(--gold); font-weight:bold;">第 ${currentMatchNum} 將進行中</span>
+        <span style="font-size:15px; font-weight:bold; color:#fff;">🔥 ${sess.name} (戰局激戰中)</span>
+        <span style="font-size:12px; color:var(--gold); font-weight:bold;">籌碼戰鬥中</span>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
-        ${scoreItems}
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">今日到場出賽選手名單：</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        ${playerChips}
       </div>
     `;
   }
 
-  // 渲染個人專頁標籤
   function renderPublicPlayerPills(DB) {
     const container = document.getElementById("publicPlayerPills");
     const roster = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
@@ -424,151 +287,56 @@
     renderAllData(currentDB);
   }
 
-  // 核心功能：場 -> 將 -> 局 三層手風琴結構渲染
   function renderPubPlayerDetail(name, DB) {
     document.getElementById("publicPlayerDetailBox").style.display = "block";
-    const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, matchesPlayed: 0 };
+    const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
 
     document.getElementById("pubDetailName").innerText = name;
-    document.getElementById("pubDetailSub").innerText = `總出賽: ${stats.matchesPlayed} 將 ｜ 胡: ${stats.hu||0} ｜ 摸: ${stats.mo||0} ｜ 槍: ${stats.qiang||0}`;
+    document.getElementById("pubDetailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 共 ${stats.matchesPlayed} 將`;
     const scoreEl = document.getElementById("pubDetailScore");
     scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
     scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
 
     const points = [0];
-    const sessionCardsData = [];
+    const matchLogs = [];
 
-    // 匯整所有封存場次
-    (DB.archivedSessions || []).slice().reverse().forEach((sess, sIdx) => {
-      let sessionPlayerScore = 0;
-      const sessionMatches = [];
-
-      (sess.matches || []).forEach((m, mIdx) => {
-        const pIdx = (m.seats || []).indexOf(name);
-        if (pIdx !== -1) {
-          const sc = m.scores[pIdx];
-          sessionPlayerScore += sc;
-          points.push(points[points.length - 1] + sc);
-
-          // 找出該選手在此將中的每局參與狀況
-          const roundsInMatch = (m.history || []).map(h => {
-            const isWinner = h.winnerName === name || h.text.startsWith(name + " ");
-            const isLoser = h.text.includes("胡 " + name);
-            const isZimoOther = h.isZimo && !isWinner;
-            let roleBadge = "🛡️ 沒事";
-            let roleColor = "var(--text-muted)";
-            if (isWinner) {
-              roleBadge = h.isZimo ? "🌟 自摸" : "🎯 胡牌";
-              roleColor = "var(--win)";
-            } else if (isLoser) {
-              roleBadge = "💥 放槍";
-              roleColor = "var(--lose)";
-            } else if (isZimoOther) {
-              roleBadge = "🌧️ 被摸";
-              roleColor = "#fda4af";
-            }
-            return {
-              roundTitle: h.roundTitle,
-              text: h.text,
-              roleBadge,
-              roleColor
-            };
-          });
-
-          sessionMatches.push({
-            matchNumber: m.matchNumber,
-            score: sc,
-            rounds: roundsInMatch
-          });
-        }
-      });
-
-      if (sessionMatches.length > 0) {
-        sessionCardsData.unshift({
-          sessionName: sess.name,
-          date: sess.date,
-          totalScore: sessionPlayerScore,
-          matches: sessionMatches
+    (DB.archivedSessions || []).slice().reverse().forEach(sess => {
+      const res = (sess.results || []).find(r => r.name === name);
+      if (res) {
+        points.push(points[points.length - 1] + res.finalScore);
+        matchLogs.unshift({
+          title: `${sess.name} (${sess.date})`,
+          score: res.finalScore,
+          matches: res.matchesPlayed
         });
       }
     });
 
-    // 繪製 SVG 走勢圖
     renderPubTrendSVG(points);
 
-    // 渲染三層列表 (場 -> 將 -> 局)
     const listContainer = document.getElementById("pubDetailMatchList");
-    if (sessionCardsData.length === 0) {
-      listContainer.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:12px;">尚無出賽完賽戰績</div>`;
+    if (matchLogs.length === 0) {
+      listContainer.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:10px;">尚無完賽戰績</div>`;
       return;
     }
 
-    listContainer.innerHTML = sessionCardsData.map((sData, sIndex) => {
-      const matchRowsHtml = sData.matches.map((mData, mIndex) => {
-        const roundRowsHtml = mData.rounds.map(r => `
-          <div class="p-round-row">
-            <span><b>［${r.roundTitle}］</b> ${r.text}</span>
-            <span style="color:${r.roleColor}; font-weight:bold; white-space:nowrap; margin-left:6px;">${r.roleBadge}</span>
-          </div>
-        `).join("");
-
-        return `
-          <div class="p-match-card">
-            <div class="p-match-head" onclick="togglePlayerSubAccordion('pm-${sIndex}-${mIndex}')">
-              <span><b>第 ${mData.matchNumber} 將</b> (共 ${mData.rounds.length} 局)</span>
-              <div>
-                <span style="color:${mData.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:13px; margin-right:6px;">
-                  ${mData.score >= 0 ? '+'+mData.score : mData.score}
-                </span>
-                <span style="color:var(--primary); font-size:11px;" id="pm-arrow-pm-${sIndex}-${mIndex}">▼ 局明細</span>
-              </div>
-            </div>
-            <div class="p-match-body" id="pm-${sIndex}-${mIndex}">
-              ${roundRowsHtml || '<div style="color:var(--text-muted);">無單局明細</div>'}
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      return `
-        <div class="p-session-card">
-          <div class="p-session-head" onclick="togglePlayerSubAccordion('ps-${sIndex}')">
-            <div>
-              <b style="color:#fff; font-size:13px;">📁 ${sData.sessionName}</b>
-              <span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(${sData.date} ｜ 出賽 ${sData.matches.length} 將)</span>
-            </div>
-            <div>
-              <span style="color:${sData.totalScore >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:900; font-family:monospace; font-size:14px; margin-right:6px;">
-                ${sData.totalScore >= 0 ? '+'+sData.totalScore : sData.totalScore}
-              </span>
-              <span style="color:var(--gold); font-size:11px;" id="ps-arrow-ps-${sIndex}">▼ 展開各將</span>
-            </div>
-          </div>
-          <div class="p-session-body" id="ps-${sIndex}">
-            ${matchRowsHtml}
-          </div>
+    listContainer.innerHTML = matchLogs.map(item => `
+      <div style="background:#1e293b; border:1px solid #334155; border-radius:6px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <b>${item.title}</b>
+          <span style="font-size:11px; color:var(--text-muted); display:block;">出賽 ${item.matches} 將</span>
         </div>
-      `;
-    }).join("");
-  }
-
-  function togglePlayerSubAccordion(elementId) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const arrowEl = document.getElementById(elementId.startsWith('ps-') ? `ps-arrow-${elementId}` : `pm-arrow-${elementId}`);
-    if (el.classList.contains('open')) {
-      el.classList.remove('open');
-      if (arrowEl) arrowEl.innerText = elementId.startsWith('ps-') ? "▼ 展開各將" : "▼ 局明細";
-    } else {
-      el.classList.add('open');
-      if (arrowEl) arrowEl.innerText = "▲ 收合";
-    }
+        <span style="color:${item.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:15px;">
+          ${item.score >= 0 ? '+'+item.score : item.score}
+        </span>
+      </div>
+    `).join("");
   }
 
   function renderPubTrendSVG(points) {
     const chartContainer = document.getElementById("pubTrendChartBox");
     if (points.length <= 1) {
-      chartContainer.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:55px 0;">出賽 1 將以上後自動繪製走勢</div>`;
+      chartContainer.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:55px 0;">出賽 1 場以上後自動繪製走勢</div>`;
       return;
     }
     const min = Math.min(...points);
@@ -595,52 +363,51 @@
     `;
   }
 
-  function renderHallOfFame(DB) {
-    const allRounds = [];
-    (DB.archivedSessions || []).forEach(s => {
-      (s.matches || []).forEach(m => {
-        (m.history || []).forEach(h => {
-          allRounds.push({ ...h, sessionName: s.name, matchNumber: m.matchNumber });
-        });
+  function renderAwards(players, sessions) {
+    if (!players || players.length === 0) return;
+    const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
+    const topScore = findTop('totalScore');
+    const topWinRate = findTop('winRateNum');
+    const topWins = findTop('winsCount');
+
+    let bestSingleScore = 0;
+    let bestSinglePlayer = "尚無";
+    let bestSingleSession = "";
+
+    sessions.forEach(s => {
+      (s.results || []).forEach(r => {
+        if (r.finalScore > bestSingleScore) {
+          bestSingleScore = r.finalScore;
+          bestSinglePlayer = r.name;
+          bestSingleSession = s.name;
+        }
       });
     });
-    if (DB.currentSession && DB.currentMatch) {
-      (DB.currentMatch.history || []).forEach(h => {
-        allRounds.push({ ...h, sessionName: DB.currentSession.name, matchNumber: (DB.currentSession.matches ? DB.currentSession.matches.length : 0) + 1 });
-      });
-    }
 
-    const topDealers = allRounds.filter(r => (r.consecutiveDeals || 0) > 0)
-      .sort((a, b) => (b.consecutiveDeals || 0) - (a.consecutiveDeals || 0))
-      .slice(0, 5);
+    const awardsHtml = `
+      <div class="award-card full-width">
+        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
+        <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
+        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ ${topScore.matchesPlayed} 將</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
+        <div class="award-player">${topWins.name}</div>
+        <div class="award-stat">單場第一：<b>${topWins.winsCount}</b> 次</div>
+      </div>
+      <div class="award-card">
+        <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
+        <div class="award-player">${topWinRate.name}</div>
+        <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b></div>
+      </div>
+      <div class="award-card full-width">
+        <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>
+        <div class="award-player">${bestSinglePlayer} <span style="color:var(--win); font-size:16px;">(+${bestSingleScore} 點)</span></div>
+        <div class="award-stat">締造於：${bestSingleSession || '尚無紀錄'}</div>
+      </div>
+    `;
 
-    const dealersContainer = document.getElementById("topDealersContainer");
-    if (topDealers.length === 0) {
-      dealersContainer.innerHTML = `<div style="color:var(--text-muted); padding:4px 0;">尚無連莊紀錄</div>`;
-    } else {
-      dealersContainer.innerHTML = topDealers.map((d, i) => `
-        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #1e293b;">
-          <span><b style="color:var(--gold);">#${i+1}</b> ${d.text.split(" ")[0]} ［${d.roundTitle}］</span>
-          <span style="color:var(--primary); font-weight:bold;">連 ${d.consecutiveDeals} 局 (${d.sessionName})</span>
-        </div>
-      `).join("");
-    }
-
-    const topWins = allRounds.filter(r => (r.tai || 0) >= 4)
-      .sort((a, b) => (b.tai || 0) - (a.tai || 0))
-      .slice(0, 5);
-
-    const bigWinsContainer = document.getElementById("topBigWinsContainer");
-    if (topWins.length === 0) {
-      bigWinsContainer.innerHTML = `<div style="color:var(--text-muted); padding:4px 0;">尚無 4 台以上大牌紀錄</div>`;
-    } else {
-      bigWinsContainer.innerHTML = topWins.map((w, i) => `
-        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #1e293b;">
-          <span><b style="color:var(--gold);">#${i+1}</b> ${w.winnerName || w.text.split(" ")[0]} ［${w.roundTitle}］ ${w.patterns && w.patterns.length > 0 ? `(${w.patterns.join(",")})` : ''}</span>
-          <span style="color:var(--win); font-weight:bold;">${w.tai} 台 (${w.sessionName})</span>
-        </div>
-      `).join("");
-    }
+    document.getElementById("awardsContainer").innerHTML = awardsHtml;
   }
 
   function renderArchivedSessions(sessions) {
@@ -652,123 +419,30 @@
       return;
     }
 
-    container.innerHTML = sessions.map((sess, sIdx) => {
-      const sessionScoreTotals = {};
-      (sess.matches || []).forEach(m => {
-        (m.seats || []).forEach((name, i) => {
-          sessionScoreTotals[name] = (sessionScoreTotals[name] || 0) + (m.scores ? m.scores[i] : 0);
-        });
-      });
-
-      const sortedNames = Object.keys(sessionScoreTotals).sort((a, b) => sessionScoreTotals[b] - sessionScoreTotals[a]);
-      const totalScoreBadges = sortedNames.map((name, rank) => {
-        const sc = sessionScoreTotals[name];
-        const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
-        return `<span>#${rank+1} ${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
+    container.innerHTML = sessions.map(sess => {
+      const resultsHtml = (sess.results || []).map(r => {
+        const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
+        return `
+          <span>${r.name}: <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>
+        `;
       }).join(" ｜ ");
 
-      const matchesDetailsHtml = (sess.matches || []).map(m => {
-        const rows = (m.seats || []).map((name, i) => {
-          const sc = m.scores ? m.scores[i] : 0;
-          const color = sc > 0 ? 'var(--win)' : (sc < 0 ? 'var(--lose)' : 'var(--text-muted)');
-          return `<span>${name}: <b style="color:${color};">${sc > 0 ? '+'+sc : sc}</b></span>`;
-        }).join(" ｜ ");
-
-        return `
-          <div style="background:#1e293b; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-bottom:6px;">
-            <div style="font-size:12px; font-weight:bold; color:var(--gold); margin-bottom:4px;">
-              第 ${m.matchNumber} 將 (${m.time || ''})
-            </div>
-            <div style="font-size:12px; line-height:1.5;">${rows}</div>
-          </div>
-        `;
-      }).join("");
+      const dongHtml = (sess.totalDong > 0) ? `<br><span style="color:var(--gold); font-size:12px;">💰 東哥：+${sess.totalDong} 點</span>` : '';
 
       return `
         <div class="session-archive-card">
-          <div class="session-archive-header" onclick="togglePublicSessionAccordion(${sIdx})">
+          <div class="session-archive-header">
             <div>
-              <span style="font-size:14px; font-weight:bold; color:#fff;">📁 ${sess.name}</span>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 共 ${sess.matches ? sess.matches.length : 0} 將)</span>
+              <b style="color:#fff;">📁 ${sess.name}</b>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ ${sess.maxMatches} 將)</span>
             </div>
-            <span style="font-size:12px; color:var(--primary);" id="pubArrowIcon-${sIdx}">▼ 展開明細</span>
           </div>
-          <div class="session-detail-panel" id="pubSessionPanel-${sIdx}">
-            <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px dashed var(--card-border);">
-              <b>【當日全場結算排名】</b><br>${totalScoreBadges}
-            </div>
-            <div style="font-size:12px; font-weight:bold; color:#fff; margin-bottom:6px;">【各將獨立戰報】</div>
-            ${matchesDetailsHtml}
+          <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
+            ${resultsHtml} ${dongHtml}
           </div>
         </div>
       `;
     }).join("");
-  }
-
-  function togglePublicSessionAccordion(sIdx) {
-    const panel = document.getElementById(`pubSessionPanel-${sIdx}`);
-    const arrow = document.getElementById(`pubArrowIcon-${sIdx}`);
-    if (panel.classList.contains("open")) {
-      panel.classList.remove("open");
-      arrow.innerText = "▼ 展開明細";
-    } else {
-      panel.classList.add("open");
-      arrow.innerText = "▲ 收合";
-    }
-  }
-
-  function renderAwards(players) {
-    if (!players || players.length === 0) return;
-    const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
-    const topScore = findTop('totalScore');
-    const topZimo = findTop('zimoRate');
-    const topHu = findTop('huRate');
-    const topLaohu = findTop('laohuRate');
-    const topQiang = findTop('qiangRate');
-    const topPeida = findTop('peidaRate');
-    const topAshuai = findTop('ashuaiRate');
-
-    const fmtPct = (val) => ((val || 0) * 100).toFixed(1) + "%";
-
-    const awardsHtml = `
-      <div class="award-card full-width">
-        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
-        <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
-        <div class="award-stat">出賽 ${topScore.matchesPlayed} 將 / 累計勝局 ${topScore.hu + topScore.mo} 次</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">🌟 自摸王</div>
-        <div class="award-player">${topZimo.name}</div>
-        <div class="award-stat">自摸率：<b>${fmtPct(topZimo.zimoRate)}</b> (${topZimo.mo} 次)</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">🎯 抓槍王</div>
-        <div class="award-player">${topHu.name}</div>
-        <div class="award-stat">胡牌率：<b>${fmtPct(topHu.huRate)}</b> (${topHu.hu} 次)</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">👑 老胡 (總勝出率)</div>
-        <div class="award-player">${topLaohu.name}</div>
-        <div class="award-stat">勝出率：<b>${fmtPct(topLaohu.laohuRate)}</b> (${topLaohu.hu + topLaohu.mo} 次)</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">💥 槍王 (放槍率)</div>
-        <div class="award-player" style="color:var(--lose);">${topQiang.name}</div>
-        <div class="award-stat">放槍率：<b>${fmtPct(topQiang.qiangRate)}</b> (${topQiang.qiang} 次)</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">🍵 陪打王 (沒事率)</div>
-        <div class="award-player">${topPeida.name}</div>
-        <div class="award-stat">防守沒事率：<b>${fmtPct(topPeida.peidaRate)}</b> (${topPeida.nothing} 次)</div>
-      </div>
-      <div class="award-card">
-        <div class="award-title">🌧️ 阿衰 (被摸率)</div>
-        <div class="award-player" style="color:#fda4af;">${topAshuai.name}</div>
-        <div class="award-stat">被自摸率：<b>${fmtPct(topAshuai.ashuaiRate)}</b> (${topAshuai.beiMo} 次)</div>
-      </div>
-    `;
-
-    document.getElementById("awardsContainer").innerHTML = awardsHtml;
   }
 </script>
 </body>
