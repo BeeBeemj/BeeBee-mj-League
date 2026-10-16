@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台灣16張麻將・無限隨機牌理與手筋特訓</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            mahjong: {
+              table: '#082517',
+              border: '#04130b',
+              felt: '#0f3823',
+              accent: '#f59e0b',
+              ivory: '#FAF6EE'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mj-tile {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -3px 0 #cfc7b4;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .mj-tile:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -3px 0 #cfc7b4;
+    }
+    .mj-tile.selected {
+      transform: translateY(-10px);
+      box-shadow: 0 12px 18px -2px rgba(250, 204, 21, 0.8), 0 0 0 2.5px #facc15, inset 0 -3px 0 #cfc7b4;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #1b5336;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- 頂部資訊列 -->
+  <header class="bg-mahjong-border/95 border-b border-emerald-900/80 backdrop-blur px-4 py-3 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-700 border border-emerald-400 flex items-center justify-center shadow-lg text-emerald-100 text-xl font-bold">
+          🀄
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg md:text-xl font-black tracking-wide text-emerald-300">台灣16張麻將・正統牌理特訓</h1>
+            <span class="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">全題型無限隨機出題</span>
+          </div>
+          <p class="text-xs text-emerald-400/80">向聽數優先原則・DFS窮舉驗證・真扣除持牌張數試算</p>
+        </div>
+      </div>
+
+      <!-- 統計資訊 -->
+      <div class="flex items-center space-x-3 bg-black/60 px-3.5 py-1.5 rounded-full border border-emerald-800 text-xs md:text-sm">
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-clipboard-check text-yellow-400"></i>
+          <span class="text-slate-300">累計:</span>
+          <span id="stat-total" class="font-bold text-white">0</span>
+        </div>
+        <div class="h-3 w-px bg-emerald-800"></div>
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-trophy text-amber-400"></i>
+          <span class="text-slate-300">正確率:</span>
+          <span id="stat-accuracy" class="font-bold text-emerald-400">100%</span>
+        </div>
+        <div class="h-3 w-px bg-emerald-800"></div>
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-regular fa-clock text-cyan-400"></i>
+          <span id="timer-display" class="font-mono text-cyan-300">00:00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main class="max-w-6xl w-full mx-auto p-3 md:p-6 flex-1 flex flex-col justify-start gap-4">
+
+    <!-- 階段切換按鈕區 -->
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-mahjong-felt/80 p-2 md:p-3 rounded-2xl border border-emerald-700/60 shadow-inner">
+      <div class="flex flex-wrap gap-1.5 bg-black/50 p-1.5 rounded-xl border border-emerald-800/80 text-xs md:text-sm">
+        <button id="tab-stage-a" onclick="switchStage('A')" class="px-3.5 py-2 rounded-lg font-bold transition-all bg-emerald-600 text-white shadow">
+          階段 A：一向聽何切聽最大 (17張)
+        </button>
+        <button id="tab-stage-b" onclick="switchStage('B')" class="px-3.5 py-2 rounded-lg font-bold transition-all text-slate-300 hover:text-white">
+          階段 B：兩向聽最大進張 (17張)
+        </button>
+        <button id="tab-stage-c" onclick="switchStage('C')" class="px-3.5 py-2 rounded-lg font-bold transition-all text-slate-300 hover:text-white">
+          階段 C：16張多門聽辨識
+        </button>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="generateNextQuestion()" class="px-3.5 py-2 rounded-lg bg-emerald-900/90 hover:bg-emerald-700 border border-emerald-500 text-xs md:text-sm font-bold text-emerald-200 transition flex items-center gap-1.5 shadow">
+          <i class="fa-solid fa-arrows-rotate"></i> 隨機下一題
+        </button>
+        <button onclick="resetStats()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs md:text-sm text-slate-300 transition">
+          重置統計
+        </button>
+      </div>
+    </div>
+
+    <!-- 牌桌主舞台 -->
+    <div class="relative bg-mahjong-table rounded-2xl p-4 md:p-7 border-4 border-mahjong-border shadow-2xl flex flex-col items-center justify-between min-h-[440px] overflow-hidden">
+      <!-- 紋理背景 -->
+      <div class="absolute inset-0 bg-[radial-gradient(#1c5a3b_1px,transparent_1px)] [background-size:14px_14px] opacity-40 pointer-events-none"></div>
+
+      <!-- 題目與目標說明 -->
+      <div class="w-full flex justify-between items-start mb-2 relative z-10">
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="badge-stage" class="inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50">
+              一向聽・何切聽最大
+            </span>
+            <span id="q-category-tag" class="text-xs bg-black/40 border border-emerald-600/40 text-emerald-300 px-2 py-0.5 rounded">
+              演算法即時生成
+            </span>
+          </div>
+          <h2 id="question-title" class="text-base md:text-xl font-black mt-2 text-yellow-200 tracking-wide">
+            手牌已達一向聽！打哪一張能直接聽牌且聽牌張數最多？
+          </h2>
+          <p id="question-desc" class="text-xs md:text-sm text-emerald-200/90 mt-1">
+            遵循【向聽數優先原則】，打出的一張牌必須立即宣告聽牌，切勿退向聽！
+          </p>
+        </div>
+      </div>
+
+      <!-- 手牌展示區 -->
+      <div class="w-full my-4 flex flex-col items-center justify-center relative z-10">
+        <div id="hand-tiles-container" class="w-full flex items-center justify-center flex-wrap gap-1 sm:gap-1.5 py-3 px-2 rounded-xl bg-black/35 border border-emerald-900/60 backdrop-blur-sm scrollbar-thin">
+          <!-- 麻將牌由 JS 動態生成 -->
+        </div>
+
+        <div id="tile-interact-hint" class="text-[12px] font-medium text-emerald-300/80 mt-2 flex items-center gap-1.5">
+          <i class="fa-solid fa-hand-pointer"></i> 點選上方任意一張手牌選定打出
+        </div>
+      </div>
+
+      <!-- 階段 C 專用：多門聽牌勾選面板 -->
+      <div id="stage-c-panel" class="w-full bg-black/60 p-4 rounded-xl border border-emerald-700/60 hidden relative z-10 flex flex-col gap-3">
+        <div class="text-xs md:text-sm font-bold text-emerald-200 flex items-center justify-between">
+          <span>請在下方勾選此副 16 張手牌所聽的「所有胡牌門數」：</span>
+          <span class="text-amber-300 text-xs">已選: <strong id="stage-c-count">0</strong> 門</span>
+        </div>
+        <div id="stage-c-candidates" class="flex flex-wrap gap-1.5 justify-center max-h-40 overflow-y-auto p-1 scrollbar-thin">
+          <!-- 候選牌清單 -->
+        </div>
+      </div>
+
+      <!-- 操作與送出列 -->
+      <div class="w-full flex flex-wrap justify-between items-center mt-3 pt-3 border-t border-emerald-800/60 relative z-10 gap-3">
+        <div class="text-xs md:text-sm text-emerald-300">
+          <span id="selected-status-text">尚未選擇要打出的牌</span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button id="btn-submit" onclick="submitUserAnswer()" class="px-6 py-2.5 rounded-xl font-black text-sm bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-lg transform active:scale-95 transition">
+            確認送出答案
+          </button>
+          <button id="btn-next" onclick="generateNextQuestion()" class="hidden px-5 py-2.5 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition flex items-center gap-1.5">
+            下一題 <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 評估與詳細牌理分析面板 -->
+    <div id="analysis-panel" class="hidden bg-slate-900 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-2xl transition-all duration-300">
+      <div id="feedback-banner" class="flex items-center gap-3 p-4 rounded-xl mb-5 border">
+        <div id="feedback-icon" class="text-2xl md:text-3xl font-bold"></div>
+        <div>
+          <h3 id="feedback-title" class="font-black text-base md:text-lg"></h3>
+          <p id="feedback-sub" class="text-xs md:text-sm mt-0.5 opacity-90"></p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- 各出牌打法評估對比 -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+          <h4 id="comparison-header" class="text-sm font-bold text-yellow-400 flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-scale-balanced"></i> 各出牌打法成聽／進張排行
+          </h4>
+          <div id="discards-comparison-list" class="space-y-2 text-xs md:text-sm max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+            <!-- 動態生成排比清單 -->
+          </div>
+        </div>
+
+        <!-- 牌理手筋與拆解深度說明 -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <h4 class="text-sm font-bold text-emerald-400 flex items-center gap-2 mb-2">
+              <i class="fa-solid fa-brain"></i> 牌型架構與深度解拆
+            </h4>
+            <div id="tactical-notes-content" class="text-slate-300 text-xs md:text-sm leading-relaxed space-y-2">
+              <!-- 詳細剖析 -->
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+            <span>牌型規格：台灣16張（5面子+1雀頭）</span>
+            <span class="text-amber-400 font-semibold">張數均已扣除自身已持有的張數</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-mahjong-border/80 border-t border-emerald-950 py-3 px-4 text-center text-xs text-emerald-400/70">
+    台灣16張麻將專用・向聽數優先牌理與無限手筋引擎 &copy; 2026
+  </footer>
+
+  <script>
+    /* ==========================================================
+       1. 麻將牌定義、向量繪圖與基礎工具
+       ========================================================== */
+    const TILE_NAMES = {
+      m1:'一萬', m2:'二萬', m3:'三萬', m4:'四萬', m5:'五萬', m6:'六萬', m7:'七萬', m8:'八萬', m9:'九萬',
+      p1:'一筒', p2:'二筒', p3:'三筒', p4:'四筒', p5:'五筒', p6:'六筒', p7:'七筒', p8:'八筒', p9:'九筒',
+      s1:'一條', s2:'二條', s3:'三條', s4:'四條', s5:'五條', s6:'六條', s7:'七條', s8:'八條', s9:'九條',
+      z1:'東風', z2:'南風', z3:'西風', z4:'北風', z5:'紅中', z6:'青發', z7:'白板'
+    };
+
+    const ALL_34_TILES = [
+      'm1','m2','m3','m4','m5','m6','m7','m8','m9',
+      'p1','p2','p3','p4','p5','p6','p7','p8','p9',
+      's1','s2','s3','s4','s5','s6','s7','s8','s9',
+      'z1','z2','z3','z4','z5','z6','z7'
+    ];
+
+    function renderTileSVG(code, size = "md") {
+      const type = code[0];
+      const val = parseInt(code[1], 10);
+      let width = 42, height = 58;
+      if (size === "sm") { width = 32; height = 44; }
+      if (size === "xs") { width = 24; height = 33; }
+
+      let inner = '';
+      if (type === 'm') {
+        const cnNums = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+        inner = `
+          <text x="21" y="24" font-size="20" font-weight="900" fill="#c21c1c" text-anchor="middle" font-family="'Noto Sans TC', serif">${cnNums[val]}</text>
+          <text x="21" y="47" font-size="18" font-weight="900" fill="#1b4d35" text-anchor="middle" font-family="'Noto Sans TC', serif">萬</text>
+        `;
+      } else if (type === 'p') {
+        if (val === 1) {
+          inner = `
+            <circle cx="21" cy="29" r="14" fill="#c21c1c" stroke="#f59e0b" stroke-width="2"/>
+            <circle cx="21" cy="29" r="6" fill="#15803d"/>
+            <circle cx="21" cy="29" r="2" fill="#faf6ee"/>
+          `;
+        } else {
+          inner = `
+            <text x="21" y="32" font-size="19" font-weight="900" fill="#0369a1" text-anchor="middle">${val}</text>
+            <circle cx="21" cy="46" r="5" fill="#c21c1c" stroke="#0369a1" stroke-width="1.5"/>
+          `;
+        }
+      } else if (type === 's') {
+        if (val === 1) {
+          inner = `
+            <path d="M14 36 C14 20, 28 20, 28 36 Z" fill="#15803d"/>
+            <circle cx="21" cy="20" r="7" fill="#15803d"/>
+            <circle cx="23" cy="18" r="1.5" fill="#facc15"/>
+            <line x1="21" y1="36" x2="21" y2="48" stroke="#b45309" stroke-width="2"/>
+          `;
+        } else {
+          inner = `
+            <text x="21" y="32" font-size="19" font-weight="900" fill="#15803d" text-anchor="middle">${val}</text>
+            <rect x="18" y="40" width="6" height="12" rx="3" fill="#15803d"/>
+          `;
+        }
+      } else if (type === 'z') {
+        const chars = ["", "東", "南", "西", "北", "中", "發", "白"];
+        let color = "#1e293b";
+        if (val === 5) color = "#c21c1c";
+        if (val === 6) color = "#15803d";
+        if (val === 7) {
+          inner = `<rect x="10" y="14" width="22" height="30" rx="3" fill="none" stroke="#0284c7" stroke-width="2.5"/>`;
+        } else {
+          inner = `<text x="21" y="37" font-size="22" font-weight="900" fill="${color}" text-anchor="middle" font-family="'Noto Sans TC', serif">${chars[val]}</text>`;
+        }
+      }
+
+      return `
+        <svg viewBox="0 0 42 58" width="${width}" height="${height}" class="rounded select-none pointer-events-none drop-shadow-sm">
+          <rect x="1" y="1" width="40" height="56" rx="5" fill="#faf6ee" stroke="#ded8c7" stroke-width="1.5"/>
+          ${inner}
+        </svg>
+      `;
+    }
+
+    function sortMahjongTiles(tiles) {
+      const suitOrder = { 'm': 1, 'p': 2, 's': 3, 'z': 4 };
+      return [...tiles].sort((a, b) => {
+        if (suitOrder[a[0]] !== suitOrder[b[0]]) {
+          return suitOrder[a[0]] - suitOrder[b[0]];
+        }
+        return parseInt(a[1], 10) - parseInt(b[1], 10);
+      });
+    }
+
+    /* ==========================================================
+       2. 正統台灣16張 DFS 遞迴求解引擎 (5面子 + 1雀頭)
+       ========================================================== */
+    function canWinHand(hand17) {
+      if (hand17.length !== 17) return false;
+      const countMap = {};
+      for (let i = 0; i < hand17.length; i++) {
+        const t = hand17[i];
+        countMap[t] = (countMap[t] || 0) + 1;
+        if (countMap[t] > 4) return false;
+      }
+
+      for (const t in countMap) {
+        if (countMap[t] >= 2) {
+          countMap[t] -= 2;
+          if (checkMeldsOnly(countMap, 5)) {
+            countMap[t] += 2;
+            return true;
+          }
+          countMap[t] += 2;
+        }
+      }
+      return false;
+    }
+
+    function checkMeldsOnly(countMap, meldsNeeded) {
+      if (meldsNeeded === 0) return true;
+
+      let firstTile = null;
+      for (let i = 0; i < ALL_34_TILES.length; i++) {
+        const t = ALL_34_TILES[i];
+        if ((countMap[t] || 0) > 0) {
+          firstTile = t;
+          break;
+        }
+      }
+      if (!firstTile) return true;
+
+      const type = firstTile[0];
+      const val = parseInt(firstTile[1], 10);
+
+      // 嘗試刻子
+      if (countMap[firstTile] >= 3) {
+        countMap[firstTile] -= 3;
+        if (checkMeldsOnly(countMap, meldsNeeded - 1)) {
+          countMap[firstTile] += 3;
+          return true;
+        }
+        countMap[firstTile] += 3;
+      }
+
+      // 嘗試順子
+      if (type !== 'z' && val <= 7) {
+        const t2 = `${type}${val + 1}`;
+        const t3 = `${type}${val + 2}`;
+        if ((countMap[t2] || 0) > 0 && (countMap[t3] || 0) > 0) {
+          countMap[firstTile] -= 1;
+          countMap[t2] -= 1;
+          countMap[t3] -= 1;
+          if (checkMeldsOnly(countMap, meldsNeeded - 1)) {
+            countMap[firstTile] += 1;
+            countMap[t2] += 1;
+            countMap[t3] += 1;
+            return true;
+          }
+          countMap[firstTile] += 1;
+          countMap[t2] += 1;
+          countMap[t3] += 1;
+        }
+      }
+
+      return false;
+    }
+
+    // 計算 16 張手牌真正聽的所有牌
+    function getExactWaits16(hand16) {
+      const counts = {};
+      hand16.forEach(t => counts[t] = (counts[t] || 0) + 1);
+      const waits = [];
+      for (let i = 0; i < ALL_34_TILES.length; i++) {
+        const tile = ALL_34_TILES[i];
+        if ((counts[tile] || 0) >= 4) continue;
+        if (canWinHand([...hand16, tile])) {
+          waits.push(tile);
+        }
+      }
+      return waits;
+    }
+
+    // 計算聽牌的剩餘有效張數（排除自身手牌）
+    function countRemainingOuts(hand, targetTiles) {
+      const counts = {};
+      hand.forEach(t => counts[t] = (counts[t] || 0) + 1);
+      let total = 0;
+      targetTiles.forEach(t => {
+        const inHand = counts[t] || 0;
+        total += Math.max(0, 4 - inHand);
+      });
+      return total;
+    }
+
+    /* ==========================================================
+       3. 核心隨機無限題庫生成引擎
+       ========================================================== */
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getRandomSuit(exclude = []) {
+      const suits = ['m', 'p', 's'].filter(s => !exclude.includes(s));
+      return suits[Math.floor(Math.random() * suits.length)];
+    }
+
+    // 隨機生成一組完整面子 (順子或刻子)
+    function generateRandomMeld(usedMap) {
+      const isSequence = Math.random() < 0.7;
+      let tries = 0;
+      while (tries++ < 50) {
+        if (isSequence) {
+          const suit = getRandomSuit();
+          const start = getRandomInt(1, 7);
+          const t1 = `${suit}${start}`, t2 = `${suit}${start + 1}`, t3 = `${suit}${start + 2}`;
+          if ((usedMap[t1]||0) < 4 && (usedMap[t2]||0) < 4 && (usedMap[t3]||0) < 4) {
+            return [t1, t2, t3];
+          }
+        } else {
+          const tile = ALL_34_TILES[Math.floor(Math.random() * ALL_34_TILES.length)];
+          if ((usedMap[tile]||0) <= 1) {
+            return [tile, tile, tile];
+          }
+        }
+      }
+      return ['m1', 'm2', 'm3'];
+    }
+
+    // ==========================================
+    // 階段 A 生成器：一向聽・何切聽最大 (17張)
+    // 必然有打出某張可「即刻聽牌」，打其他張可能退向聽或聽愚形
+    // ==========================================
+    function generateStageAQuestion() {
+      let attempts = 0;
+      while (attempts++ < 300) {
+        const usedMap = {};
+        const melds = [];
+        // 先生成 3 組完整面子 (3 * 3 = 9張)
+        for (let i = 0; i < 3; i++) {
+          const m = generateRandomMeld(usedMap);
+          m.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+          melds.push(...m);
+        }
+
+        // 構造一向聽核心架構 (剩下 8 張，摸進第17張 = 8張未完成牌)
+        // 經典一向聽型態：一雀頭 + 兩搭子 (2 + 2 + 2 = 6張) + 摸進牌
+        // 例如：雀頭 (AA) + 雙頭搭 (BC) + 雙頭/坎張/凸刻擴展搭 (DEF)
+        const suit1 = getRandomSuit();
+        const suit2 = getRandomSuit([suit1]);
+
+        // 類型 1：雙頭搭 + 凸連順搭 (如 23萬 與 4567萬，帶雀頭)
+        // 類型 2：五面子超載一向聽 (雙頭搭 + 雙碰對倒搭)
+        const typeChoice = Math.random();
+        let coreTiles = [];
+
+        if (typeChoice < 0.5) {
+          // 4567 順子擴展 (4張) + 兩面搭子 (2張) + 對子雀頭 (2張) = 8張
+          const startVal = getRandomInt(2, 5);
+          const tA = `${suit1}${startVal}`, tB = `${suit1}${startVal+1}`, tC = `${suit1}${startVal+2}`, tD = `${suit1}${startVal+3}`;
+          const pStart = getRandomInt(1, 8);
+          const p1 = `${suit2}${pStart}`, p2 = `${suit2}${pStart+1}`;
+          const pairTile = ALL_34_TILES[Math.floor(Math.random() * ALL_34_TILES.length)];
+
+          coreTiles = [tA, tB, tC, tD, p1, p2, pairTile, pairTile];
+        } else {
+          // 雙碰帶雙頭：兩對子 (4張) + 一組雙頭搭 (2張) + 摸進一組好形進張 (2張)
+          const pStart = getRandomInt(2, 7);
+          const p1 = `${suit1}${pStart}`, p2 = `${suit1}${pStart+1}`;
+          const pair1 = `${suit2}${getRandomInt(1, 9)}`;
+          const honorSuit = ['z1','z2','z3','z4','z5','z6','z7'][getRandomInt(0, 6)];
+          const extraStart = getRandomInt(3, 6);
+          const e1 = `${suit1}${extraStart}`, e2 = `${suit1}${extraStart+1}`;
+
+          coreTiles = [p1, p2, pair1, pair1, honorSuit, honorSuit, e1, e2];
+        }
+
+        let full17 = [...melds, ...coreTiles];
+        // 驗證張數合法性 (每種牌不超過4張)
+        const checkCount = {};
+        let validCounts = true;
+        full17.forEach(t => {
+          checkCount[t] = (checkCount[t] || 0) + 1;
+          if (checkCount[t] > 4) validCounts = false;
+        });
+        if (!validCounts || full17.length !== 17) continue;
+
+        // 評估全部 17 張牌的切牌結果
+        const discardResults = [];
+        const uniqueDiscards = Array.from(new Set(full17));
+        let maxOuts = -1;
+        let bestDiscards = [];
+
+        for (const discard of uniqueDiscards) {
+          // 複製手牌並移去該張
+          const testHand16 = [...full17];
+          const idx = testHand16.indexOf(discard);
+          testHand16.splice(idx, 1);
+
+          const waits = getExactWaits16(testHand16);
+          const isTenpai = (waits.length > 0);
+          const outs = isTenpai ? countRemainingOuts(testHand16, waits) : 0;
+
+          discardResults.push({
+            discard,
+            isTenpai,
+            waitTiles: waits,
+            outs,
+            note: isTenpai
+              ? `【即刻聽牌】聽 ${waits.map(t => TILE_NAMES[t]).join('、')}（共 ${waits.length} 門，剩餘 ${outs} 張）`
+              : `【未聽／退向聽】打出此牌無法立即聽牌，違背向聽數優先原則！`
+          });
+
+          if (isTenpai && outs > maxOuts) {
+            maxOuts = outs;
+            bestDiscards = [discard];
+          } else if (isTenpai && outs === maxOuts) {
+            bestDiscards.push(discard);
+          }
+        }
+
+        // 必須存在至少一種即刻聽牌的打法，且有多種打法對比
+        if (bestDiscards.length > 0 && maxOuts >= 4 && discardResults.length >= 3) {
+          // 排序手牌
+          full17 = sortMahjongTiles(full17);
+          return {
+            id: 'A-RANDOM-' + Date.now(),
+            stage: 'A',
+            title: `一向聽何切：最大聽牌洞數抉擇`,
+            category: `向聽數優先・聽牌好形試算`,
+            tiles: full17,
+            bestDiscards: bestDiscards,
+            optionsAnalysis: discardResults.sort((a, b) => b.outs - a.outs),
+            rationale: `手牌目前是一向聽（打一張立即聽牌）。\n在此牌型下，打出【${bestDiscards.map(t=>TILE_NAMES[t]).join(' 或 ')}】可以直接聽牌，胡牌張數高達 ${maxOuts} 張！\n麻將實戰中必須貫徹「向聽數優先原則」，切忌為了微不足道的虛胖進張拆散已有成型的聽牌搭子。`
+          };
+        }
+      }
+
+      // 極端保底
+      return generateStageAQuestion();
+    }
+
+    // ==========================================
+    // 階段 B 生成器：兩向聽．最大進張 (17張)
+    // 打任一張均「無法直接聽牌」，比拼推進到一向聽的進張廣度
+    // ==========================================
+    function generateStageBQuestion() {
+      let attempts = 0;
+      while (attempts++ < 300) {
+        const usedMap = {};
+        const melds = [];
+        // 生成 2 組完成面子 (6張)
+        for (let i = 0; i < 2; i++) {
+          const m = generateRandomMeld(usedMap);
+          m.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+          melds.push(...m);
+        }
+
+        // 構造兩向聽：尚需 3 組面子+1雀頭 (共11張未完成牌)
+        // 包含：2組雙頭/坎張搭子 + 1組雀頭 + 1組浮牌或重疊搭子 (如 245 或 135) + 1張孤張
+        const s1 = getRandomSuit();
+        const s2 = getRandomSuit([s1]);
+        const s3 = getRandomSuit([s1, s2]);
+
+        const pairTile = ALL_34_TILES[Math.floor(Math.random() * ALL_34_TILES.length)];
+        const start1 = getRandomInt(2, 6);
+        const start2 = getRandomInt(2, 6);
+
+        // 浮牌孤張（東風、白板、或 1, 9 么九牌）
+        const isolatedTiles = ['z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7', `${s1}1`, `${s2}9`];
+        const isolated = isolatedTiles[Math.floor(Math.random() * isolatedTiles.length)];
+
+        // 複合重疊搭子 (例如 245 或 356)
+        const overlapStart = getRandomInt(2, 5);
+        const over1 = `${s3}${overlapStart}`;
+        const over2 = `${s3}${overlapStart + 2}`;
+        const over3 = `${s3}${overlapStart + 3}`;
+
+        const coreTiles = [
+          pairTile, pairTile,
+          `${s1}${start1}`, `${s1}${start1 + 1}`,
+          `${s2}${start2}`, `${s2}${start2 + 2}`, // 坎張搭子
+          over1, over2, over3,
+          isolated,
+          `${s1}${getRandomInt(1, 9)}`
+        ];
+
+        let full17 = [...melds, ...coreTiles];
+        if (full17.length !== 17) continue;
+
+        const checkCount = {};
+        let validCounts = true;
+        full17.forEach(t => {
+          checkCount[t] = (checkCount[t] || 0) + 1;
+          if (checkCount[t] > 4) validCounts = false;
+        });
+        if (!validCounts) continue;
+
+        // 確保此手牌任打一張都「不能直接聽牌」(確實為兩向聽)
+        const uniqueDiscards = Array.from(new Set(full17));
+        let anyImmediateTenpai = false;
+        for (const d of uniqueDiscards) {
+          const test16 = [...full17];
+          test16.splice(test16.indexOf(d), 1);
+          if (getExactWaits16(test16).length > 0) {
+            anyImmediateTenpai = true;
+            break;
+          }
+        }
+        if (anyImmediateTenpai) continue; // 若打一張能聽牌，則是一向聽，捨棄
+
+        // 計算每種打法的「推進至一向聽」有效進張種數與張數
+        const discardResults = [];
+        let maxAcceptOuts = -1;
+        let bestDiscards = [];
+
+        for (const discard of uniqueDiscards) {
+          const test16 = [...full17];
+          test16.splice(test16.indexOf(d = discard), 1);
+
+          // 測試摸進 34 種牌中，哪些牌可以讓手牌變成一向聽（即再打一張可以聽牌）
+          const acceptedTiles = [];
+          for (let i = 0; i < ALL_34_TILES.length; i++) {
+            const drawTile = ALL_34_TILES[i];
+            const testDraw17 = [...test16, drawTile];
+            // 檢查此 17 張是否有一向聽 (是否存在任一出牌能聽牌)
+            let reaches1Shanten = false;
+            const subDiscards = Array.from(new Set(testDraw17));
+            for (const subD of subDiscards) {
+              const testSub16 = [...testDraw17];
+              testSub16.splice(testSub16.indexOf(subD), 1);
+              if (getExactWaits16(testSub16).length > 0) {
+                reaches1Shanten = true;
+                break;
+              }
+            }
+            if (reaches1Shanten) {
+              acceptedTiles.push(drawTile);
+            }
+          }
+
+          const outs = countRemainingOuts(test16, acceptedTiles);
+          discardResults.push({
+            discard,
+            isTenpai: false,
+            waitTiles: acceptedTiles,
+            outs,
+            note: `【兩向聽推進】進 ${acceptedTiles.length} 門牌（共 ${outs} 張）可進入一向聽`
+          });
+
+          if (outs > maxAcceptOuts) {
+            maxAcceptOuts = outs;
+            bestDiscards = [discard];
+          } else if (outs === maxAcceptOuts) {
+            bestDiscards.push(discard);
+          }
+        }
+
+        if (bestDiscards.length > 0 && maxAcceptOuts >= 12 && discardResults.length >= 3) {
+          full17 = sortMahjongTiles(full17);
+          return {
+            id: 'B-RANDOM-' + Date.now(),
+            stage: 'B',
+            title: `兩向聽：推進一向聽最大進張抉擇`,
+            category: `搭子取捨・擴張進張廣度`,
+            tiles: full17,
+            bestDiscards: bestDiscards,
+            optionsAnalysis: discardResults.sort((a, b) => b.outs - a.outs),
+            rationale: `手牌目前為兩向聽，打出任何一張牌均無法直接宣告聽牌。\n此時核心牌理在於「追求進一向聽的最大有效進張總張數」！\n打出【${bestDiscards.map(t=>TILE_NAMES[t]).join(' 或 ')}】保留了最優質的雙頭與複合搭子，進張張數高達 ${maxAcceptOuts} 張（${discardResults[0].waitTiles.length} 門）！`
+          };
+        }
+      }
+
+      return generateStageBQuestion();
+    }
+
+    // ==========================================
+    // 階段 C 生成器：16張多門聽辨識 (凸刻、大螺絲、連順等手筋)
+    // 全自動隨機生成 + DFS窮舉驗證 100% 不漏聽
+    // ==========================================
+    function generateStageCQuestion() {
+      const patterns = [
+        // 凸刻型：2345556 (四門通聽: 1,4,6,7)
+        {
+          name: "凸刻帶雙頭 (四面通聽)",
+          generateCore: (suit) => {
+            const shift = getRandomInt(1, 3);
+            return [
+              `${suit}${shift+1}`, `${suit}${shift+2}`, `${suit}${shift+3}`,
+              `${suit}${shift+4}`, `${suit}${shift+4}`, `${suit}${shift+4}`,
+              `${suit}${shift+5}`
+            ];
+          }
+        },
+        // 大螺絲七連順：2345678 (三門通聽: 2,5,8)
+        {
+          name: "大螺絲七連順 (三面通聽)",
+          generateCore: (suit) => {
+            const shift = getRandomInt(1, 2);
+            return [
+              `${suit}${shift+1}`, `${suit}${shift+2}`, `${suit}${shift+3}`,
+              `${suit}${shift+4}`, `${suit}${shift+5}`, `${suit}${shift+6}`, `${suit}${shift+7}`
+            ];
+          }
+        },
+        // 雙碰帶順子：23455 + 對子 (四門聽: 1,4,5 與 對碰)
+        {
+          name: "雙碰帶順子 (四門多面聽)",
+          generateCore: (suit) => {
+            const shift = getRandomInt(1, 5);
+            return [
+              `${suit}${shift}`, `${suit}${shift+1}`, `${suit}${shift+2}`,
+              `${suit}${shift+3}`, `${suit}${shift+3}`
+            ];
+          }
+        },
+        // 三連順帶暗刻：3334567 (聽 2,5,8 或 4,7)
+        {
+          name: "暗刻帶四連順 (多門手筋)",
+          generateCore: (suit) => {
+            const shift = getRandomInt(1, 4);
+            return [
+              `${suit}${shift}`, `${suit}${shift}`, `${suit}${shift}`,
+              `${suit}${shift+1}`, `${suit}${shift+2}`, `${suit}${shift+3}`, `${suit}${shift+4}`
+            ];
+          }
+        },
+        // 四連順帶雀頭：3456 (雙頭聽兩端作雀頭)
+        {
+          name: "四連順帶雀頭 (兩面聽)",
+          generateCore: (suit) => {
+            const shift = getRandomInt(1, 6);
+            return [`${suit}${shift}`, `${suit}${shift+1}`, `${suit}${shift+2}`, `${suit}${shift+3}`];
+          }
+        }
+      ];
+
+      let attempts = 0;
+      while (attempts++ < 300) {
+        const pObj = patterns[Math.floor(Math.random() * patterns.length)];
+        const suit = getRandomSuit();
+        const core = pObj.generateCore(suit);
+
+        // 其餘牌由隨機完成的面子或對子湊足 16 張
+        const remainingNeeded = 16 - core.length;
+        const usedMap = {};
+        core.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+
+        const filler = [];
+        if (remainingNeeded === 9) {
+          // 補 3 組面子 (3 * 3 = 9)
+          for (let i = 0; i < 3; i++) {
+            const m = generateRandomMeld(usedMap);
+            m.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+            filler.push(...m);
+          }
+        } else if (remainingNeeded === 12) {
+          // 補 4 組面子 (4 * 3 = 12)
+          for (let i = 0; i < 4; i++) {
+            const m = generateRandomMeld(usedMap);
+            m.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+            filler.push(...m);
+          }
+        } else if (remainingNeeded === 11) {
+          // 補 3 組面子 (9) + 1 對雀頭 (2)
+          for (let i = 0; i < 3; i++) {
+            const m = generateRandomMeld(usedMap);
+            m.forEach(t => usedMap[t] = (usedMap[t] || 0) + 1);
+            filler.push(...m);
+          }
+          const pairSuit = getRandomSuit([suit]);
+          const pVal = getRandomInt(1, 9);
+          filler.push(`${pairSuit}${pVal}`, `${pairSuit}${pVal}`);
+        } else {
+          // 其它數量補齊
+          while (filler.length < remainingNeeded) {
+            const t = ALL_34_TILES[Math.floor(Math.random() * ALL_34_TILES.length)];
+            filler.push(t);
+          }
+        }
+
+        const hand16 = [...core, ...filler];
+        if (hand16.length !== 16) continue;
+
+        // 驗證張數合法性
+        const countCheck = {};
+        let valid = true;
+        hand16.forEach(t => {
+          countCheck[t] = (countCheck[t] || 0) + 1;
+          if (countCheck[t] > 4) valid = false;
+        });
+        if (!valid) continue;
+
+        // 透過 DFS 遞迴判定真正聽牌洞數
+        const trueWaits = getExactWaits16(hand16);
+
+        // 題目必須已達聽牌（至少聽 2 門以上才有練習價值）
+        if (trueWaits.length >= 2) {
+          const sortedHand = sortMahjongTiles(hand16);
+          const totalOuts = countRemainingOuts(sortedHand, trueWaits);
+
+          return {
+            id: 'C-RANDOM-' + Date.now(),
+            stage: 'C',
+            title: `實戰手筋：16張多門聽辨識`,
+            category: pObj.name,
+            tiles: sortedHand,
+            correctWaits: trueWaits,
+            totalOuts: totalOuts,
+            rationale: `【手筋拆解剖析】：\n此 16 張手牌經台灣麻將 5 面子 + 1 雀頭正統窮舉分解：\n共聽【${trueWaits.map(t=>TILE_NAMES[t]).join('、')}】（共 ${trueWaits.length} 門，扣除自身手牌剩餘 ${totalOuts} 張）！\n涵蓋了順子伸展、暗刻拆解、單吊眼位等多元手筋複合型態。`
+          };
+        }
+      }
+
+      // 保底
+      return generateStageCQuestion();
+    }
+
+    /* ==========================================================
+       4. 應用程式狀態與互動控制
+       ========================================================== */
+    let currentStage = 'A';
+    let currentQ = null;
+    let selectedTileIndex = null;
+    let selectedStageC = new Set();
+    let stats = { total: 0, correct: 0 };
+    let timerInterval = null;
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      const start = Date.now();
+      timerInterval = setInterval(() => {
+        const sec = Math.floor((Date.now() - start) / 1000);
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${m}:${s}`;
+      }, 1000);
+    }
+
+    function switchStage(stage) {
+      currentStage = stage;
+      ['A','B','C'].forEach(s => {
+        const btn = document.getElementById(`tab-stage-${s.toLowerCase()}`);
+        if (s === stage) {
+          btn.className = "px-3.5 py-2 rounded-lg font-bold transition-all bg-emerald-600 text-white shadow";
+        } else {
+          btn.className = "px-3.5 py-2 rounded-lg font-bold transition-all text-slate-300 hover:text-white";
+        }
+      });
+
+      const badge = document.getElementById('badge-stage');
+      const cPanel = document.getElementById('stage-c-panel');
+      const interactHint = document.getElementById('tile-interact-hint');
+
+      if (stage === 'A') {
+        badge.innerText = "階段 A・一向聽何切聽最大 (17張)";
+        badge.className = "inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50";
+        cPanel.classList.add('hidden');
+        interactHint.classList.remove('hidden');
+      } else if (stage === 'B') {
+        badge.innerText = "階段 B・兩向聽最大進張 (17張)";
+        badge.className = "inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50";
+        cPanel.classList.add('hidden');
+        interactHint.classList.remove('hidden');
+      } else if (stage === 'C') {
+        badge.innerText = "階段 C・16張多門聽辨識";
+        badge.className = "inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/50";
+        cPanel.classList.remove('hidden');
+        interactHint.classList.add('hidden');
+      }
+
+      generateNextQuestion();
+    }
+
+    function generateNextQuestion() {
+      selectedTileIndex = null;
+      selectedStageC.clear();
+      document.getElementById('analysis-panel').classList.add('hidden');
+      document.getElementById('btn-submit').classList.remove('hidden');
+      document.getElementById('btn-next').classList.add('hidden');
+
+      if (currentStage === 'A') {
+        currentQ = generateStageAQuestion();
+        document.getElementById('question-title').innerText = "手牌已達一向聽！打哪一張能直接聽牌且聽牌張數最多？";
+        document.getElementById('question-desc').innerText = "遵循【向聽數優先原則】，打出一張必須「立即宣告聽牌」，切勿退回兩向聽！";
+        document.getElementById('selected-status-text').innerText = "尚未選擇要打出的牌";
+      } else if (currentStage === 'B') {
+        currentQ = generateStageBQuestion();
+        document.getElementById('question-title').innerText = "手牌目前為兩向聽！打哪一張推進到一向聽的有效張數最多？";
+        document.getElementById('question-desc').innerText = "打任一張均無法直接聽牌。請精算摸牌進張面，選出最寬廣的打法！";
+        document.getElementById('selected-status-text').innerText = "尚未選擇要打出的牌";
+      } else if (currentStage === 'C') {
+        currentQ = generateStageCQuestion();
+        document.getElementById('question-title').innerText = "手牌 16 張已聽牌！請在下方勾選出此牌型所聽的所有胡牌門數。";
+        document.getElementById('question-desc').innerText = "注意凸刻、連順、暗刻單吊與雀頭轉換，找出 100% 正確的胡牌清單！";
+        document.getElementById('selected-status-text').innerText = "請在下方點選此副牌有聽的所有牌";
+      }
+
+      document.getElementById('q-category-tag').innerText = currentQ.category;
+      renderHandTiles(currentQ.tiles);
+
+      if (currentStage === 'C') {
+        renderStageCCandidates();
+      }
+
+      startTimer();
+    }
+
+    function renderHandTiles(tiles) {
+      const container = document.getElementById('hand-tiles-container');
+      container.innerHTML = '';
+
+      tiles.forEach((tCode, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "mj-tile flex-shrink-0 cursor-pointer rounded transition-all";
+        
+        // 17張手牌時，第17張（最新摸進牌）微微隔開呈現
+        if (tiles.length === 17 && idx === 16) {
+          btn.classList.add('ml-2', 'sm:ml-3', 'ring-2', 'ring-amber-400');
+        }
+
+        btn.innerHTML = renderTileSVG(tCode, "md");
+        btn.onclick = () => onTileClick(idx);
+        container.appendChild(btn);
+      });
+    }
+
+    function onTileClick(idx) {
+      if (currentStage === 'C') return;
+      selectedTileIndex = idx;
+
+      const tiles = document.querySelectorAll('#hand-tiles-container .mj-tile');
+      tiles.forEach((t, i) => {
+        if (i === idx) t.classList.add('selected');
+        else t.classList.remove('selected');
+      });
+
+      const tileCode = currentQ.tiles[idx];
+      document.getElementById('selected-status-text').innerHTML = `
+        準備打出：<span class="font-bold text-amber-300 text-sm">${TILE_NAMES[tileCode]}</span>
+      `;
+    }
+
+    function renderStageCCandidates() {
+      const container = document.getElementById('stage-c-candidates');
+      container.innerHTML = '';
+      document.getElementById('stage-c-count').innerText = "0";
+
+      // 提取手牌中出現的花色，以聚焦候選清單
+      const suitsInHand = new Set(currentQ.tiles.map(t => t[0]));
+      const candidates = [];
+      suitsInHand.forEach(s => {
+        if (s === 'z') {
+          for (let i = 1; i <= 7; i++) candidates.push(`z${i}`);
+        } else {
+          for (let i = 1; i <= 9; i++) candidates.push(`${s}${i}`);
+        }
+      });
+
+      candidates.forEach(tileCode => {
+        const item = document.createElement('div');
+        item.className = "flex flex-col items-center p-1 rounded-lg border border-slate-700 bg-slate-800 cursor-pointer hover:border-yellow-400 transition";
+        item.innerHTML = renderTileSVG(tileCode, "sm");
+
+        item.onclick = () => {
+          if (selectedStageC.has(tileCode)) {
+            selectedStageC.delete(tileCode);
+            item.classList.remove('ring-2', 'ring-yellow-400', 'bg-emerald-950');
+          } else {
+            selectedStageC.add(tileCode);
+            item.classList.add('ring-2', 'ring-yellow-400', 'bg-emerald-950');
+          }
+          document.getElementById('stage-c-count').innerText = selectedStageC.size;
+        };
+
+        container.appendChild(item);
+      });
+    }
+
+    function submitUserAnswer() {
+      let isCorrect = false;
+
+      if (currentStage === 'A' || currentStage === 'B') {
+        if (selectedTileIndex === null) {
+          showToast("請先點選手牌中您想打出的一張牌！");
+          return;
+        }
+        const picked = currentQ.tiles[selectedTileIndex];
+        isCorrect = currentQ.bestDiscards.includes(picked);
+        displayDiscardAnalysis(isCorrect, picked);
+      } else {
+        if (selectedStageC.size === 0) {
+          showToast("請在下方勾選您認為有聽的牌！");
+          return;
+        }
+        const correctSet = new Set(currentQ.correctWaits);
+        isCorrect = (correctSet.size === selectedStageC.size) && [...correctSet].every(t => selectedStageC.has(t));
+        displayStageCAnalysis(isCorrect);
+      }
+
+      stats.total += 1;
+      if (isCorrect) stats.correct += 1;
+      updateStatsUI();
+
+      document.getElementById('btn-submit').classList.add('hidden');
+      document.getElementById('btn-next').classList.remove('hidden');
+    }
+
+    function displayDiscardAnalysis(isCorrect, userTile) {
+      const panel = document.getElementById('analysis-panel');
+      panel.classList.remove('hidden');
+
+      const banner = document.getElementById('feedback-banner');
+      const icon = document.getElementById('feedback-icon');
+      const title = document.getElementById('feedback-title');
+      const sub = document.getElementById('feedback-sub');
+
+      const bestNames = currentQ.bestDiscards.map(t => TILE_NAMES[t]).join(' 或 ');
+
+      if (isCorrect) {
+        banner.className = "flex items-center gap-3 p-4 rounded-xl mb-5 border bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-lg";
+        icon.innerHTML = "<i class='fa-solid fa-circle-check text-emerald-400'></i>";
+        title.innerText = "完全正確！最佳牌理切牌！";
+        sub.innerText = `打出【${TILE_NAMES[userTile]}】鎖定了最高張數與最佳進張！`;
+      } else {
+        banner.className = "flex items-center gap-3 p-4 rounded-xl mb-5 border bg-rose-950/90 border-rose-500 text-rose-200 shadow-lg";
+        icon.innerHTML = "<i class='fa-solid fa-triangle-exclamation text-rose-400'></i>";
+        title.innerText = `打出 ${TILE_NAMES[userTile]} 並非最佳解！`;
+        sub.innerText = `正解打法為【${bestNames}】。請參考下方張數排比分析！`;
+      }
+
+      const listContainer = document.getElementById('discards-comparison-list');
+      listContainer.innerHTML = '';
+
+      currentQ.optionsAnalysis.slice(0, 8).forEach(opt => {
+        const isBest = currentQ.bestDiscards.includes(opt.discard);
+        const isUserChoice = (opt.discard === userTile);
+
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-xl border transition ${
+          isBest ? 'bg-amber-950/30 border-amber-500/70 text-amber-200' : 'bg-slate-900 border-slate-800 text-slate-300'
+        }`;
+
+        let statusBadge = '';
+        if (currentStage === 'A') {
+          statusBadge = opt.isTenpai 
+            ? `<span class="bg-emerald-900/80 text-emerald-300 border border-emerald-600 text-[10px] px-2 py-0.5 rounded font-bold">即刻聽牌</span>`
+            : `<span class="bg-rose-950/80 text-rose-300 border border-rose-700 text-[10px] px-2 py-0.5 rounded font-bold">退向聽</span>`;
+        } else {
+          statusBadge = `<span class="bg-cyan-900/80 text-cyan-300 border border-cyan-600 text-[10px] px-2 py-0.5 rounded font-bold">${opt.outs}張有效</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-sm ${isBest ? 'text-amber-400' : 'text-slate-200'}">打 ${TILE_NAMES[opt.discard]}</span>
+              ${statusBadge}
+              ${isUserChoice ? '<span class="text-[10px] bg-sky-600 text-white px-1.5 py-0.5 rounded font-bold">你的選擇</span>' : ''}
+            </div>
+            <span class="text-xs font-mono ${isBest ? 'text-amber-300 font-bold' : 'text-slate-400'}">${opt.outs} 張</span>
+          </div>
+          <p class="text-xs text-slate-300">${opt.note}</p>
+        `;
+        listContainer.appendChild(card);
+      });
+
+      document.getElementById('tactical-notes-content').innerHTML = `
+        <p class="font-bold text-yellow-300 mb-1">【${currentQ.category}・手筋深度解析】：</p>
+        <p class="whitespace-pre-line">${currentQ.rationale}</p>
+      `;
+
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function displayStageCAnalysis(isCorrect) {
+      const panel = document.getElementById('analysis-panel');
+      panel.classList.remove('hidden');
+
+      const banner = document.getElementById('feedback-banner');
+      const icon = document.getElementById('feedback-icon');
+      const title = document.getElementById('feedback-title');
+      const sub = document.getElementById('feedback-sub');
+
+      const correctNames = currentQ.correctWaits.map(t => TILE_NAMES[t]).join('、');
+
+      if (isCorrect) {
+        banner.className = "flex items-center gap-3 p-4 rounded-xl mb-5 border bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-lg";
+        icon.innerHTML = "<i class='fa-solid fa-circle-check text-emerald-400'></i>";
+        title.innerText = "神準！所有胡牌門數全數答對！";
+        sub.innerText = `完全洞悉此副手筋，通聽【${correctNames}】無一遺漏！`;
+      } else {
+        banner.className = "flex items-center gap-3 p-4 rounded-xl mb-5 border bg-amber-950/90 border-amber-500 text-amber-200 shadow-lg";
+        icon.innerHTML = "<i class='fa-solid fa-circle-question text-amber-400'></i>";
+        title.innerText = "有漏聽或多選聽牌！";
+        sub.innerText = `正確聽牌應為：【${correctNames}】。請詳閱下方拆解！`;
+      }
+
+      const listContainer = document.getElementById('discards-comparison-list');
+      listContainer.innerHTML = `
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-3">
+          <div class="text-xs text-emerald-300 font-bold">正統 DFS 判定全部聽牌（扣除手牌已佔用）：</div>
+          <div class="flex flex-wrap gap-2">
+            ${currentQ.correctWaits.map(w => {
+              const inHand = currentQ.tiles.filter(t => t === w).length;
+              const remain = Math.max(0, 4 - inHand);
+              return `
+                <div class="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg border border-emerald-600">
+                  ${renderTileSVG(w, "sm")}
+                  <div class="text-left">
+                    <div class="text-yellow-300 font-black text-xs">${TILE_NAMES[w]}</div>
+                    <div class="text-[10px] text-slate-400">剩 ${remain} 張</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          <div class="text-[12px] text-amber-300 font-semibold pt-1 border-t border-slate-800">
+            共計聽 ${currentQ.correctWaits.length} 門，剩餘總張數：${currentQ.totalOuts} 張！
+          </div>
+        </div>
+      `;
+
+      document.getElementById('tactical-notes-content').innerHTML = `
+        <p class="font-bold text-yellow-300 mb-1">【${currentQ.category}・手筋剖析】：</p>
+        <p class="whitespace-pre-line">${currentQ.rationale}</p>
+      `;
+
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function updateStatsUI() {
+      document.getElementById('stat-total').innerText = stats.total;
+      const acc = stats.total === 0 ? 100 : Math.round((stats.correct / stats.total) * 100);
+      document.getElementById('stat-accuracy').innerText = `${acc}%`;
+    }
+
+    function resetStats() {
+      stats.total = 0;
+      stats.correct = 0;
+      updateStatsUI();
+      generateNextQuestion();
+    }
+
+    function showToast(msg) {
+      let toast = document.getElementById('custom-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'custom-toast';
+        toast.className = "fixed bottom-8 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-full shadow-2xl z-50 text-xs sm:text-sm flex items-center gap-2 transition-all transform duration-200 pointer-events-none";
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${msg}`;
+      toast.style.opacity = "1";
+      toast.style.transform = "translate(-50%, 0)";
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translate(-50%, 10px)";
+      }, 2200);
+    }
+
+    window.onload = function() {
+      switchStage('A');
+    };
+  </script>
+</body>
+</html>
