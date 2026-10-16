@@ -85,15 +85,16 @@
     </div>
   </div>
 
-  <!-- 2. 榮譽榜 -->
+  <!-- 2. 榮譽榜 (升級同分裁決機制) -->
   <div class="card">
     <div class="card-title">
       <span>👑 聯賽數據榮譽榜</span>
+      <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
     </div>
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
 
-  <!-- 3. 生涯總積分榜 (勝率嚴格排序，純選手排技，不含東哥) -->
+  <!-- 3. 生涯總積分榜 (勝率嚴格排序) -->
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
@@ -139,7 +140,7 @@
     </div>
   </div>
 
-  <!-- 5. 歷場戰報 (選手勝負 + 東哥分開展示) -->
+  <!-- 5. 歷場戰報 -->
   <div class="card">
     <div class="card-title">
       <span>📜 歷場完賽戰報</span>
@@ -259,7 +260,7 @@
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <span style="font-size:15px; font-weight:bold; color:#fff;">🔥 ${sess.name} (戰局激戰中)</span>
-        <span style="font-size:12px; color:var(--gold); font-weight:bold;">籌碼戰鬥中</span>
+        <span style="font-size:12px; color:var(--gold); font-weight:bold;">📅 ${sess.date || ''}</span>
       </div>
       <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">今日到場出賽選手名單：</div>
       <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -363,13 +364,31 @@
     `;
   }
 
+  // --- 關鍵修改：榮譽榜嚴格同分裁決機制 (Tie-breaker) ---
   function renderAwards(players, sessions) {
     if (!players || players.length === 0) return;
-    const findTop = (key) => [...players].sort((a, b) => b[key] - a[key])[0];
-    const topScore = findTop('totalScore');
-    const topWinRate = findTop('winRateNum');
-    const topWins = findTop('winsCount');
 
+    // 1. 總積分王：總積分最高 -> 勝場數最多
+    const topScore = [...players].sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return b.winsCount - a.winsCount;
+    })[0];
+
+    // 2. 奪冠王：單場第一名最多 -> 總積分最高 -> 出賽場數少(效率高)
+    const topWins = [...players].sort((a, b) => {
+      if (b.winsCount !== a.winsCount) return b.winsCount - a.winsCount;
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return a.sessionsPlayed - b.sessionsPlayed;
+    })[0];
+
+    // 3. 不敗戰神：正分勝率最高 -> 總勝場數最多 -> 總積分最高
+    const topWinRate = [...players].sort((a, b) => {
+      if (b.winRateNum !== a.winRateNum) return b.winRateNum - a.winRateNum;
+      if (b.winsCount !== a.winsCount) return b.winsCount - a.winsCount;
+      return b.totalScore - a.totalScore;
+    })[0];
+
+    // 4. 單場爆發王：歷史單日最高得分 -> 總積分最高
     let bestSingleScore = 0;
     let bestSinglePlayer = "尚無";
     let bestSingleSession = "";
@@ -379,7 +398,7 @@
         if (r.finalScore > bestSingleScore) {
           bestSingleScore = r.finalScore;
           bestSinglePlayer = r.name;
-          bestSingleSession = s.name;
+          bestSingleSession = `${s.name} (${s.date})`;
         }
       });
     });
@@ -388,17 +407,17 @@
       <div class="award-card full-width">
         <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
-        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ ${topScore.matchesPlayed} 將</div>
+        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ ${topScore.matchesPlayed} 將 ｜ 拿下 ${topScore.winsCount} 次單場冠軍</div>
       </div>
       <div class="award-card">
         <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
         <div class="award-player">${topWins.name}</div>
-        <div class="award-stat">單場第一：<b>${topWins.winsCount}</b> 次</div>
+        <div class="award-stat">單場第一：<b>${topWins.winsCount}</b> 次 (勝率同分比序最高)</div>
       </div>
       <div class="award-card">
         <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
         <div class="award-player">${topWinRate.name}</div>
-        <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b></div>
+        <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (累計 ${topWinRate.winsCount} 場勝出)</div>
       </div>
       <div class="award-card full-width">
         <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>

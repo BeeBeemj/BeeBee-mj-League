@@ -96,18 +96,18 @@
         <span id="sessionStatusTitle" style="font-size:15px; font-weight:bold; color:#fff;">牌桌待機中</span>
       </div>
       <div>
-        <button id="btnToggleSession" class="btn-submit" onclick="openStartSessionModal()">🚀 開啟今日新場次</button>
+        <button id="btnToggleSession" class="btn-submit" onclick="openStartSessionModal()">🚀 開啟新場次</button>
       </div>
     </div>
 
     <div id="activeSessionInputArea" style="display: none;">
       <div class="card">
         <div class="card-title">
-          <span>📝 填寫今日各選手籌碼總結算</span>
+          <span>📝 填寫各選手籌碼總結算</span>
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
         <p style="font-size:12px; color:var(--text-muted); margin-top:0;">
-          請輸入各出賽選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及今日出賽將數：
+          請輸入各出賽選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及出賽將數：
         </p>
 
         <table class="settle-table">
@@ -125,7 +125,7 @@
         <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <b style="color:var(--gold); font-size:14px;">💰 東哥 (今日東池總收入)：</b>
+              <b style="color:var(--gold); font-size:14px;">💰 東哥 (東池總收入)：</b>
               <span style="font-size:11px; color:var(--text-muted); display:block;">(東哥獨立入帳，不併入胖弟個人牌技積分)</span>
             </div>
             <input type="number" id="inputDongPoolScore" value="0" min="0" step="20" class="settle-input" oninput="checkSumBalance()">
@@ -202,7 +202,7 @@
     </div>
   </div>
 
-  <!-- 頁面 4：生涯總榜 (不含東哥，純選手) -->
+  <!-- 頁面 4：生涯總榜 -->
   <div id="pageLeaderboard" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -238,7 +238,7 @@
     </div>
   </div>
 
-  <!-- 頁面 6：選手後台 (已找回！) -->
+  <!-- 頁面 6：選手後台 -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
@@ -257,15 +257,19 @@
   </div>
 </div>
 
-<!-- 開場彈窗 -->
+<!-- 開場彈窗 (新增支援自由選擇牌局日期) -->
 <div class="modal-overlay" id="startSessionModal">
   <div class="modal">
     <div class="modal-header">
-      <span>🚀 開啟今日新場次聚會</span>
+      <span>🚀 開啟新場次聚會</span>
       <span style="cursor: pointer; font-size: 18px;" onclick="closeStartSessionModal()">✕</span>
     </div>
     <div class="form-row">
-      <label>今日場次名稱：</label>
+      <label>📅 牌局日期 (可自由調整補記)：</label>
+      <input type="date" id="modalSessionDateInput">
+    </div>
+    <div class="form-row">
+      <label>場次名稱：</label>
       <input type="text" id="modalSessionNameInput">
     </div>
     
@@ -299,7 +303,7 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V21_SEPARATE";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V22_DATEFIX";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
@@ -312,7 +316,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 21,
+      version: 22,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -356,7 +360,7 @@
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
-      if (val && val.version >= 21) {
+      if (val && val.version >= 22) {
         DB = val;
         localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
         renderAllLocal();
@@ -394,9 +398,16 @@
     if (tab === 'roster') renderRosterView();
   }
 
+  // --- 開場彈窗 (預設當天但可自由選擇) ---
   function openStartSessionModal() {
-    const now = new Date();
-    document.getElementById("modalSessionNameInput").value = `${now.getMonth()+1}/${now.getDate()} 麻將聚會`;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const defaultDateStr = `${yyyy}-${mm}-${dd}`;
+
+    document.getElementById("modalSessionDateInput").value = defaultDateStr;
+    document.getElementById("modalSessionNameInput").value = `${today.getMonth()+1}/${today.getDate()} 麻將聚會`;
     document.getElementById("modalSessionIsHomeCheckbox").checked = true;
 
     const container = document.getElementById("modalRosterCheckboxes");
@@ -415,7 +426,17 @@
   }
 
   function confirmStartSession() {
-    const name = document.getElementById("modalSessionNameInput").value.trim() || "麻將聚會";
+    const rawDate = document.getElementById("modalSessionDateInput").value;
+    let displayDate = "";
+    if (rawDate) {
+      const parts = rawDate.split("-");
+      displayDate = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    } else {
+      const now = new Date();
+      displayDate = `${now.getMonth()+1}/${now.getDate()}`;
+    }
+
+    const name = document.getElementById("modalSessionNameInput").value.trim() || `${displayDate} 麻將聚會`;
     const isHome = document.getElementById("modalSessionIsHomeCheckbox").checked;
     
     const checkedPlayers = Array.from(document.querySelectorAll(".roster-chk:checked")).map(el => el.value);
@@ -424,11 +445,11 @@
       return;
     }
 
-    const now = new Date();
     DB.currentSession = {
       id: "SESSION_" + Date.now(),
       name: name,
-      date: `${now.getMonth()+1}/${now.getDate()}`,
+      date: displayDate,
+      fullDate: rawDate,
       isHome: isHome,
       players: checkedPlayers
     };
@@ -464,7 +485,7 @@
 
     if (DB.currentSession) {
       const homeText = DB.currentSession.isHome ? "🏠 主場 (計東)" : "🚗 外場 (無東)";
-      titleEl.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (${homeText})`;
+      titleEl.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (${DB.currentSession.date} ｜ ${homeText})`;
       btnEl.style.display = "none";
       activeArea.style.display = "block";
     } else {
@@ -483,9 +504,7 @@
     const tbody = document.getElementById("settleInputRows");
     tbody.innerHTML = (DB.currentSession.players || []).map(name => `
       <tr>
-        <td style="font-weight:bold; font-size:14px; text-align:left;">
-          ${name}
-        </td>
+        <td style="font-weight:bold; font-size:14px; text-align:left;">${name}</td>
         <td>
           <input type="number" min="1" max="20" value="3" class="settle-input input-matches" id="matches-${name}">
         </td>
@@ -511,7 +530,6 @@
     const dongEl = document.getElementById("inputDongPoolScore");
     const dongPool = (isHome && dongEl) ? (parseInt(dongEl.value) || 0) : 0;
     
-    // 東哥獨立納入全場籌碼平衡計算
     const totalBalance = sum + dongPool;
 
     const displayEl = document.getElementById("checkSumDisplay");
@@ -531,7 +549,6 @@
     return totalBalance;
   }
 
-  // 完成本場結算：選手各算各的，東哥獨立歸納進東哥金庫
   function submitSessionSettlement() {
     if (!DB.currentSession) return;
     const diff = checkSumBalance();
@@ -546,7 +563,6 @@
     const sessionResults = [];
     let maxMatchCount = 1;
 
-    // 1. 各出賽選手純打牌得分 (絕不灌入東錢，純實力)
     (DB.currentSession.players || []).forEach(name => {
       const sc = parseInt(document.getElementById(`score-${name}`).value) || 0;
       const mc = parseInt(document.getElementById(`matches-${name}`).value) || 1;
@@ -554,12 +570,11 @@
 
       sessionResults.push({
         name: name,
-        finalScore: sc, // 純打牌得分
+        finalScore: sc,
         matchesPlayed: mc
       });
     });
 
-    // 2. 更新選手生涯總榜
     sessionResults.forEach(res => {
       if (!DB.playerStats[res.name]) {
         DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
@@ -572,7 +587,6 @@
 
     DB.totalLeagueMatches += maxMatchCount;
 
-    // 3. 東哥獨立金庫紀錄
     if (isHome && dongPool > 0) {
       if (!DB.vault) DB.vault = { totalDong: 0, logs: [] };
       DB.vault.totalDong += dongPool;
@@ -584,11 +598,11 @@
       });
     }
 
-    // 4. 歷場戰報存檔 (紀錄選手 + 東哥)
     if (!DB.archivedSessions) DB.archivedSessions = [];
     DB.archivedSessions.unshift({
       name: DB.currentSession.name,
       date: DB.currentSession.date,
+      fullDate: DB.currentSession.fullDate,
       isHome: isHome,
       totalDong: dongPool,
       maxMatches: maxMatchCount,
@@ -807,7 +821,6 @@
     saveDBToCloud();
   }
 
-  // --- 選手名冊後台管理 (找回完整功能) ---
   function renderRosterView() {
     const container = document.getElementById("rosterListContainer");
     document.getElementById("rosterCountBadge").innerText = `共 ${(DB.roster || []).length} 位`;
