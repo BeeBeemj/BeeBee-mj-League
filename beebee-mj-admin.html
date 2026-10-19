@@ -28,6 +28,29 @@
       padding: 10px;
     }
     .container { max-width: 720px; margin: 0 auto; }
+    
+    /* 頁面內建解鎖卡片 (避免 prompt 被瀏覽器阻擋造成黑畫面) */
+    #loginOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 10000;
+    }
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
     .tab-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 12px; }
     .tab-btn {
       padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
@@ -75,12 +98,21 @@
     .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
     .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
 
-    /* 硬體回本進度條 */
     .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
   </style>
 </head>
 <body>
+
+<!-- 內建安全解鎖層 (防止原生彈窗被手機阻擋造成黑屏) -->
+<div id="loginOverlay" style="display: none;">
+  <div class="login-card">
+    <h3 style="margin-top:0; color:#fff;">🀄 後台管理員登入</h3>
+    <p style="font-size:13px; color:var(--text-muted);">請輸入密碼以進入結算系統</p>
+    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:2px; margin-bottom:12px;">
+    <button class="btn-submit" style="width:100%;" onclick="submitPasswordLogin()">確認登入</button>
+  </div>
+</div>
 
 <div class="container" id="adminApp" style="display: none;">
   <div class="tab-bar">
@@ -111,11 +143,10 @@
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
 
-        <!-- 場次總將數設定 (解耦選手個人將數) -->
         <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <b style="color:#fff; font-size:14px;">🀄 本場實際牌局總將數：</b>
-            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替打3將，此處填 3，下方每人填各自出賽2將)</span>
+            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替共打3將，此處填 3，下方填每人出賽2將)</span>
           </div>
           <input type="number" min="1" max="50" value="3" id="inputTotalSessionMatches" class="settle-input" style="width:70px;">
         </div>
@@ -165,7 +196,6 @@
 
   <!-- 頁面 2：東哥金庫 (含硬體攤提雙軌制) -->
   <div id="pageVault" style="display: none;">
-    <!-- 硬體回本進度看板 -->
     <div class="card" style="background:linear-gradient(135deg, #064e3b, #0f172a); border-color:#059669;">
       <div class="card-title">
         <span style="color:#fff;">🛠️ 麻將桌椅硬體回本進度 (目標 1800 點 / 36000元)</span>
@@ -183,7 +213,6 @@
       </div>
     </div>
 
-    <!-- 東哥金庫累計收益 -->
     <div class="card" style="background:linear-gradient(135deg, #1e1b4b, #0f172a); border-color:#6366f1;">
       <div class="card-title">
         <span style="color:#fff;">👑 東哥純收益金庫</span>
@@ -336,8 +365,8 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V23_HARDWARE";
-  const HARDWARE_TARGET = 1800; // 36,000 元折合 1800 積分
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V24_SAFE";
+  const HARDWARE_TARGET = 1800;
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
@@ -350,12 +379,12 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 23,
+      version: 24,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
       playerStats: stats,
-      hardware: { recovered: 0, target: HARDWARE_TARGET }, // 硬體攤提
+      hardware: { recovered: 0, target: HARDWARE_TARGET },
       vault: { totalDong: 0, logs: [] },
       archivedSessions: []
     };
@@ -364,20 +393,28 @@
   let DB = createCleanDB();
   let viewingPlayerDetailName = null;
 
+  // 安全認證檢核：避免瀏覽器攔截 prompt 造成黑屏
   function checkPassword() {
     if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
-      document.getElementById("adminApp").style.display = "block";
-      initDataPipeline();
-      return;
-    }
-    const input = prompt("請輸入管理員密碼以進入記分後台：");
-    if (input === ADMIN_PASSWORD) {
-      sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
+      document.getElementById("loginOverlay").style.display = "none";
       document.getElementById("adminApp").style.display = "block";
       initDataPipeline();
     } else {
-      alert("密碼錯誤，拒絕進入。");
-      window.location.href = "beebee-mj-index.html";
+      document.getElementById("loginOverlay").style.display = "flex";
+      document.getElementById("adminApp").style.display = "none";
+    }
+  }
+
+  function submitPasswordLogin() {
+    const pwd = document.getElementById("inputAdminPassword").value;
+    if (pwd === ADMIN_PASSWORD) {
+      sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
+      document.getElementById("loginOverlay").style.display = "none";
+      document.getElementById("adminApp").style.display = "block";
+      initDataPipeline();
+    } else {
+      alert("密碼錯誤，請重新輸入！");
+      document.getElementById("inputAdminPassword").value = "";
     }
   }
 
@@ -394,14 +431,19 @@
 
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
-      const val = snapshot.val();
-      if (val && val.version >= 23) {
-        DB = val;
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+      try {
+        const val = snapshot.val();
+        if (val && val.version >= 24) {
+          DB = val;
+          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+          renderAllLocal();
+        } else {
+          DB = createCleanDB();
+          saveDBToCloud();
+        }
+      } catch(e) {
+        console.error("Firebase 連線錯誤：", e);
         renderAllLocal();
-      } else {
-        DB = createCleanDB();
-        saveDBToCloud();
       }
     });
   }
@@ -535,7 +577,6 @@
     document.getElementById("homeTagBadge").innerText = isHome ? "🏠 主場 (計東)" : "🚗 外場 (免東)";
     document.getElementById("dongInputBlock").style.display = isHome ? "block" : "none";
 
-    // 提示目前硬體攤提狀態
     const hw = DB.hardware || { recovered: 0, target: HARDWARE_TARGET };
     const splitNoticeEl = document.getElementById("dongSplitNotice");
     if (hw.recovered >= HARDWARE_TARGET) {
@@ -595,7 +636,6 @@
     return totalBalance;
   }
 
-  // --- 完成本場結算 (支援場次總將數與硬體攤提50%拆分) ---
   function submitSessionSettlement() {
     if (!DB.currentSession) return;
     const diff = checkSumBalance();
@@ -608,7 +648,6 @@
     const dongEl = document.getElementById("inputDongPoolScore");
     const dongPool = isHome ? (parseInt(dongEl.value) || 0) : 0;
 
-    // 1. 硬體攤提與東哥金庫拆分計算
     if (!DB.hardware) DB.hardware = { recovered: 0, target: HARDWARE_TARGET };
     let toHardware = 0;
     let toDong = 0;
@@ -616,16 +655,13 @@
     if (isHome && dongPool > 0) {
       const hwNeeded = Math.max(0, HARDWARE_TARGET - DB.hardware.recovered);
       if (hwNeeded <= 0) {
-        // 已完全回本：全數歸東哥
         toDong = dongPool;
       } else {
-        // 未回本：一半給硬體，一半給東哥
         const half = Math.floor(dongPool / 2);
         if (half <= hwNeeded) {
           toHardware = half;
           toDong = dongPool - half;
         } else {
-          // 若一半超過所需補齊額度，補滿硬體後其餘全給東哥
           toHardware = hwNeeded;
           toDong = dongPool - hwNeeded;
         }
@@ -635,7 +671,6 @@
 
     const sessionResults = [];
 
-    // 2. 各出賽選手純打牌得分與個人將數
     (DB.currentSession.players || []).forEach(name => {
       const sc = parseInt(document.getElementById(`score-${name}`).value) || 0;
       const mc = parseInt(document.getElementById(`matches-${name}`).value) || 1;
@@ -647,21 +682,18 @@
       });
     });
 
-    // 3. 更新選手生涯總榜
     sessionResults.forEach(res => {
       if (!DB.playerStats[res.name]) {
         DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
       }
       DB.playerStats[res.name].totalScore += res.finalScore;
       DB.playerStats[res.name].sessionsPlayed += 1;
-      DB.playerStats[res.name].matchesPlayed += res.matchesPlayed; // 增加個人實際將數
+      DB.playerStats[res.name].matchesPlayed += res.matchesPlayed;
       if (res.finalScore > 0) DB.playerStats[res.name].winsCount += 1;
     });
 
-    // 場次總將數累計
     DB.totalLeagueMatches += sessionTotalMatches;
 
-    // 4. 東哥金庫紀錄
     if (isHome && dongPool > 0) {
       if (!DB.vault) DB.vault = { totalDong: 0, logs: [] };
       DB.vault.totalDong += toDong;
@@ -675,7 +707,6 @@
       });
     }
 
-    // 5. 歸檔歷場戰報
     if (!DB.archivedSessions) DB.archivedSessions = [];
     DB.archivedSessions.unshift({
       name: DB.currentSession.name,
@@ -685,7 +716,7 @@
       totalDong: dongPool,
       allocatedHardware: toHardware,
       allocatedDong: toDong,
-      sessionTotalMatches: sessionTotalMatches, // 記錄整場打了幾將
+      sessionTotalMatches: sessionTotalMatches,
       results: sessionResults
     });
 
@@ -701,7 +732,6 @@
     switchTab('leaderboard');
   }
 
-  // --- 東哥金庫與硬體回本進度渲染 ---
   function renderVaultView() {
     if (!DB.hardware) DB.hardware = { recovered: 0, target: HARDWARE_TARGET };
     const hw = DB.hardware;
@@ -883,7 +913,7 @@
           <div class="session-archive-header">
             <div>
               <b style="color:#fff;">📁 ${sess.name}</b>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場共打 ${sess.sessionTotalMatches || sess.maxMatches} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || sess.maxMatches} 將)</span>
               ${dongBadge}
             </div>
             <button class="btn-action-alt btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
@@ -909,7 +939,6 @@
       }
     });
 
-    // 回滾硬體攤提與東哥純益
     if (sess.allocatedHardware && DB.hardware) {
       DB.hardware.recovered = Math.max(0, DB.hardware.recovered - sess.allocatedHardware);
     }
@@ -1002,6 +1031,7 @@
     saveDBToCloud();
   }
 
+  // 頁面載入完成立即進行安全認證檢核
   document.addEventListener("DOMContentLoaded", checkPassword);
 </script>
 </body>
