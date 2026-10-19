@@ -2,8 +2,10 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BeeBee 麻將聯賽 - 後台系統</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
     :root {
       --bg: #0b1120;
@@ -17,222 +19,86 @@
       --gold: #f59e0b;
       --accent: #6366f1;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", sans-serif;
       background: var(--bg);
       color: var(--text);
+      margin: 0;
       padding: 10px;
-      min-height: 100vh;
     }
-    .container { max-width: 680px; margin: 0 auto; padding-bottom: 40px; }
-
-    /* 頂部雙列選單（2列3欄）保證文字絕不折行 */
-    .tab-bar {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-bottom: 12px;
-    }
+    .container { max-width: 720px; margin: 0 auto; }
+    .tab-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 12px; }
     .tab-btn {
-      padding: 10px 4px;
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 700;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      white-space: nowrap;
-      min-height: 42px;
+      padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
+      border-radius: 8px; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
     }
-    .tab-btn.active {
-      background: var(--primary);
-      border-color: var(--primary);
-      color: #0b1120;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    .card-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #0b1120; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
 
     .session-banner {
-      background: #1e1b4b;
-      border: 1px solid #4f46e5;
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+      background: #1e1b4b; border: 1px solid #4f46e5; border-radius: 10px;
+      padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
     }
 
     .form-row { margin-bottom: 12px; }
-    .form-row label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
-    .form-row input, .form-row select {
-      width: 100%;
-      padding: 10px;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      color: #fff;
-      font-size: 15px;
-    }
-
-    .btn-submit {
-      padding: 10px 16px;
-      font-size: 14px;
-      font-weight: 800;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: var(--primary);
-      color: #0b1120;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 42px;
-      white-space: nowrap;
-    }
-    .btn-action-alt {
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 700;
-      border-radius: 8px;
-      border: 1px solid var(--card-border);
-      background: #334155;
-      color: #fff;
-      cursor: pointer;
-      min-height: 40px;
-      white-space: nowrap;
-    }
+    .form-row label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+    .form-row input, .form-row select { width: 100%; padding: 8px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff; font-size: 14px; }
+    
+    .btn-submit { padding: 10px 14px; font-size: 14px; font-weight: 800; border-radius: 8px; border: none; cursor: pointer; background: var(--primary); color: #000; }
+    .btn-action-alt { padding: 8px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--card-border); background: #334155; color: #fff; cursor: pointer; }
     .btn-danger { background: #b91c1c; border-color: #991b1b; color: #fff; }
 
-    .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .settle-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; }
-    .settle-table th, .settle-table td { padding: 10px 4px; border-bottom: 1px solid var(--card-border); text-align: center; }
-    .settle-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
-    .settle-input {
-      width: 80px;
-      padding: 8px 4px;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      color: #fff;
-      font-weight: bold;
-      font-family: monospace;
-      text-align: center;
-      font-size: 16px;
+    .settle-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    .settle-table th, .settle-table td { padding: 8px 6px; border-bottom: 1px solid var(--card-border); text-align: center; }
+    .settle-table th { background: #0f172a; color: var(--text-muted); }
+    .settle-input { width: 90px; padding: 6px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff; font-weight: bold; font-family: monospace; text-align: center; font-size: 15px; }
+
+    .stats-table-wrapper { overflow-x: auto; }
+    table.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+    table.stats-table th, table.stats-table td { padding: 8px 4px; border-bottom: 1px solid var(--card-border); white-space: nowrap; }
+    table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
+    .highlight-cell { font-weight: bold; font-family: monospace; }
+
+    /* 硬體進度條 */
+    .progress-track {
+      width: 100%; height: 16px; background: #0f172a; border-radius: 8px;
+      overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e);
+      width: 0%; transition: width 0.4s ease;
     }
 
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
-      z-index: 9999;
-    }
-    .modal {
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      width: 100%;
-      max-width: 480px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 18px;
-    }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 999; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #1e293b; border: 1px solid var(--card-border); border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 18px; }
+    .modal-header { font-size: 16px; font-weight: bold; margin-bottom: 14px; display: flex; justify-content: space-between; }
 
-    .roster-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      padding: 10px 12px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-    }
-    .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; white-space: nowrap; }
+    .roster-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid var(--card-border); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
+    .btn-sm { padding: 4px 8px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; }
     .btn-del { background: #b91c1c; color: #fff; border-color: #991b1b; }
     .btn-edit { background: #0284c7; color: #fff; border-color: #0369a1; }
 
     .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
     .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
     .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
-
-    .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
-    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
-    
-    #lockScreen {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(11, 17, 32, 0.98);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      z-index: 10000;
-    }
-    .lock-box {
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 24px;
-      width: 100%;
-      max-width: 320px;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
 
-<!-- 密碼登入層 (認證成功直接自 DOM 移除，100% 絕不阻擋點擊) -->
-<div id="lockScreen">
-  <div class="lock-box">
-    <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼</p>
-    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
-    <button type="button" class="btn-submit" style="width:100%;" id="btnUnlock">解鎖登入</button>
-  </div>
-</div>
-
-<div class="container" id="adminApp">
-  <!-- 雙列固定導覽列 -->
+<div class="container" id="adminApp" style="display: none;">
   <div class="tab-bar">
-    <button type="button" class="tab-btn active" data-tab="settle">🀄 當場結算</button>
-    <button type="button" class="tab-btn" data-tab="vault">💰 東哥金庫</button>
-    <button type="button" class="tab-btn" data-tab="playerDetail">👤 選手專頁</button>
-    <button type="button" class="tab-btn" data-tab="leaderboard">📊 生涯總榜</button>
-    <button type="button" class="tab-btn" data-tab="history">📜 歷場戰報</button>
-    <button type="button" class="tab-btn" data-tab="roster">⚙️ 選手管理</button>
+    <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
+    <div class="tab-btn" id="tabVaultBtn" onclick="switchTab('vault')">💰 東哥金庫</div>
+    <div class="tab-btn" id="tabPlayerDetailBtn" onclick="switchTab('playerDetail')">👤 選手專頁</div>
+    <div class="tab-btn" id="tabLeaderboardBtn" onclick="switchTab('leaderboard')">📊 生涯總榜</div>
+    <div class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">📜 歷場戰報</div>
+    <div class="tab-btn" id="tabRosterBtn" onclick="switchTab('roster')">⚙️ 選手後台</div>
   </div>
 
-  <!-- 分頁 1：當場場次總結算 -->
+  <!-- 頁面 1：當場場次總結算 -->
   <div id="pageSettle">
     <div class="session-banner">
       <div>
@@ -240,53 +106,56 @@
         <span id="sessionStatusTitle" style="font-size:15px; font-weight:bold; color:#fff;">牌桌待機中</span>
       </div>
       <div>
-        <button type="button" id="btnOpenSession" class="btn-submit">🚀 開啟新場次</button>
+        <button id="btnToggleSession" class="btn-submit" onclick="openStartSessionModal()">🚀 開啟新場次</button>
       </div>
     </div>
 
-    <div id="activeSessionArea" style="display: none;">
+    <div id="activeSessionInputArea" style="display: none;">
       <div class="card">
         <div class="card-title">
           <span>📝 填寫各選手籌碼總結算</span>
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
-
-        <div style="background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        
+        <!-- 場次實際總將數獨立設定 -->
+        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <b style="color:#fff; font-size:14px;">🀄 本場實際牌局總將數：</b>
-            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替共打3將填 3，下方填每人出賽2將)</span>
+            <b style="color:var(--gold); font-size:14px;">🀄 本場牌桌實際進行總將數：</b>
+            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替打3將，此處填3；下方各人各填打2將)</span>
           </div>
-          <input type="number" min="1" max="50" value="3" id="inputSessionMatches" class="settle-input" style="width:70px;">
+          <input type="number" id="inputSessionActualTotalMatches" value="3" min="1" max="50" class="settle-input">
         </div>
 
         <p style="font-size:12px; color:var(--text-muted); margin-top:0;">
-          請輸入各選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及個人出賽將數：
+          請輸入各出賽選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及個人實際出賽將數：
         </p>
 
-        <div class="table-container">
-          <table class="settle-table">
-            <thead>
-              <tr>
-                <th>出賽選手</th>
-                <th>個人將數</th>
-                <th>籌碼淨勝分</th>
-              </tr>
-            </thead>
-            <tbody id="settleRows"></tbody>
-          </table>
-        </div>
+        <table class="settle-table">
+          <thead>
+            <tr>
+              <th>出賽選手</th>
+              <th>個人出賽將數</th>
+              <th>籌碼淨勝分</th>
+            </tr>
+          </thead>
+          <tbody id="settleInputRows"></tbody>
+        </table>
 
+        <!-- 東哥獨立輸入欄位 (含 50/50 攤提提示) -->
         <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <b style="color:var(--gold); font-size:14px;">💰 東池總實收積分：</b>
-              <span id="dongSplitNotice" style="font-size:11px; color:#a5b4fc; display:block;">(50% 撥入硬體攤提，50% 撥入東哥金庫)</span>
+              <b style="color:var(--gold); font-size:14px;">💰 東哥 (今日東池總收入)：</b>
+              <span id="dongSplitPreviewText" style="font-size:11px; color:#38bdf8; display:block; margin-top:2px;">
+                50% 撥入硬體回本池 ｜ 50% 撥入東哥純益
+              </span>
             </div>
-            <input type="number" id="inputDongPool" value="0" min="0" step="20" class="settle-input">
+            <input type="number" id="inputDongPoolScore" value="0" min="0" step="20" class="settle-input" oninput="checkSumBalance()">
           </div>
         </div>
 
-        <div style="margin-top:14px; padding:12px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+        <!-- 籌碼平衡檢核 -->
+        <div style="margin-top:14px; padding:10px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <span style="font-size:12px; color:var(--text-muted);">含東哥全場合計：</span>
             <b id="checkSumDisplay" style="font-size:18px; font-family:monospace;">0</b>
@@ -295,862 +164,852 @@
         </div>
 
         <div style="margin-top:14px; display:flex; gap:8px;">
-          <button type="button" class="btn-submit" style="flex:1;" id="btnSubmitSettle">💾 完成本場結算並歸檔</button>
-          <button type="button" class="btn-action-alt btn-danger" id="btnCancelSettle">✕ 取消本場</button>
+          <button class="btn-submit" style="flex:1;" onclick="submitSessionSettlement()">💾 完成本場結算並歸檔</button>
+          <button class="btn-action-alt btn-danger" onclick="cancelCurrentSession()">✕ 取消本場</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 分頁 2：東哥金庫 -->
+  <!-- 頁面 2：東哥金庫 (含硬體回本 1800 點進度與分帳) -->
   <div id="pageVault" style="display: none;">
-    <div class="card" style="background:linear-gradient(135deg, #064e3b, #0f172a); border-color:#059669;">
-      <div class="card-title">
-        <span style="color:#fff;">🛠️ 麻將桌椅硬體回本進度 (目標 1800 點)</span>
-        <span id="hardwareStatusBadge" style="font-size:14px; color:var(--win); font-weight:bold;">0%</span>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="hardwareBar"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:#cbd5e1; margin-top:4px;">
-        <span>已攤提：<b id="hwRecoveredDisplay" style="color:#fff;">0</b> / 1800 點</span>
-        <span>尚缺：<b id="hwRemainingDisplay" style="color:var(--gold);">1800</b> 點</span>
-      </div>
-    </div>
-
     <div class="card" style="background:linear-gradient(135deg, #1e1b4b, #0f172a); border-color:#6366f1;">
       <div class="card-title">
-        <span style="color:#fff;">👑 東哥純收益金庫</span>
-        <span id="vaultTotalBadge" style="font-size:18px; color:var(--gold); font-weight:900;">累計總收益：0 點</span>
+        <span style="color:#fff;">🛠️ 桌椅硬體開銷回本進度 (目標 1,800 點 / 36,000 元)</span>
+        <span id="hardwareStatusBadge" style="font-size:14px; font-weight:900; color:var(--gold);">0 / 1800 點</span>
       </div>
-      <div style="font-size:12px; color:#cbd5e1; line-height:1.6;">
-        此處為排除硬體成本後，東哥實際入帳的水錢收益。
+      <div class="progress-track">
+        <div class="progress-fill" id="hardwareProgressBar"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#cbd5e1;">
+        <span id="hardwareProgressText">已回本：0 點 (0.0%)</span>
+        <span id="hardwareRemainText">尚差：1800 點</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span>📜 歷場東錢拆分明細</span></div>
-      <div id="vaultHistoryList"></div>
+      <div class="card-title">
+        <span>💰 金庫資產總覽</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border); text-align:center;">
+          <span style="font-size:12px; color:var(--text-muted);">🛠️ 硬體攤提累計回本</span>
+          <b id="vaultHardwarePaidTotal" style="display:block; font-size:20px; color:var(--primary); font-family:monospace; margin-top:4px;">0 點</b>
+        </div>
+        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border); text-align:center;">
+          <span style="font-size:12px; color:var(--text-muted);">👑 東哥純收益總庫存</span>
+          <b id="vaultDongProfitTotal" style="display:block; font-size:20px; color:var(--gold); font-family:monospace; margin-top:4px;">0 點</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📜 歷場東錢拆分收益明細表</span>
+      </div>
+      <div id="vaultHistoryContainer" style="max-height:360px; overflow-y:auto;"></div>
     </div>
   </div>
 
-  <!-- 分頁 3：選手獨立專頁 -->
+  <!-- 頁面 3：選手獨立專頁 -->
   <div id="pagePlayerDetail" style="display: none;">
     <div class="card">
-      <div class="card-title"><span>👤 選擇選手檔案</span></div>
+      <div class="card-title">
+        <span>👤 選擇選手檔案</span>
+      </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="playerProfilePills"></div>
       
       <div id="playerDetailContent" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end;">
           <div>
-            <h3 id="detailName" style="margin:0; font-size:20px; color:#fff;">選手</h3>
-            <span id="detailSub" style="font-size:12px; color:var(--text-muted);">生涯總覽</span>
+            <h3 id="detailPlayerName" style="margin:0; font-size:20px; color:#fff;">選手名字</h3>
+            <span id="detailPlayerSub" style="font-size:12px; color:var(--text-muted);">生涯總覽</span>
           </div>
           <div style="text-align:right;">
             <span style="font-size:12px; color:var(--text-muted); display:block;">當前總淨勝點數</span>
-            <span id="detailScore" style="font-size:24px; font-weight:900; font-family:monospace;">0</span>
+            <span id="detailPlayerScore" style="font-size:24px; font-weight:900; font-family:monospace;">0</span>
           </div>
         </div>
 
-        <div class="card-title" style="margin-top:14px;"><span>📈 歷場純打牌積分走勢圖</span></div>
-        <div class="trend-chart-box" id="detailChart"></div>
+        <div class="card-title" style="margin-top:14px;">
+          <span>📈 歷場純打牌積分走勢圖</span>
+        </div>
+        <div class="trend-chart-box" id="detailChartContainer"></div>
 
-        <div class="card-title" style="margin-top:14px;"><span>📜 個人歷場出賽戰績明細</span></div>
-        <div id="detailLogsList"></div>
+        <div class="card-title" style="margin-top:14px;">
+          <span>📜 個人歷場出賽戰績明細</span>
+        </div>
+        <div id="detailMatchHistoryList" style="max-height:260px; overflow-y:auto;"></div>
       </div>
     </div>
   </div>
 
-  <!-- 分頁 4：生涯總榜 -->
+  <!-- 頁面 4：生涯總榜 -->
   <div id="pageLeaderboard" style="display: none;">
     <div class="card">
       <div class="card-title">
         <span>🏆 聯賽選手時時總積分排行榜 (純牌技較量)</span>
-        <span id="totalMatchesBadge" style="font-size: 12px; color: var(--gold);">累計：0 場 / 0 將</span>
+        <span id="totalLeagueMatchesCountDisplay" style="font-size: 12px; color: var(--gold);">累計：0 場 / 0 將</span>
       </div>
-      <div class="table-container">
-        <table class="settle-table">
+      <div class="stats-table-wrapper">
+        <table class="stats-table">
           <thead>
             <tr>
               <th>名次</th>
               <th>選手</th>
               <th>總積分</th>
               <th>出賽場數</th>
-              <th>總將數</th>
+              <th>出賽總將數</th>
               <th>場勝率</th>
             </tr>
           </thead>
-          <tbody id="leaderboardBody"></tbody>
+          <tbody id="leagueLeaderboardBody"></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- 分頁 5：歷場戰報 -->
+  <!-- 頁面 5：歷場戰報 -->
   <div id="pageHistory" style="display: none;">
     <div class="card">
       <div class="card-title">
-        <span>📜 歷場完賽戰報</span>
-        <span id="totalSessionsBadge" style="font-size: 12px; color: var(--gold);">共 0 場</span>
+        <span>📜 歷場完賽戰報 (點擊場次展開查看)</span>
+        <span id="totalSessionsArchived" style="font-size: 12px; color: var(--gold);">共 0 場</span>
       </div>
-      <div id="archivedList"></div>
+      <div id="archivedSessionsContainer"></div>
     </div>
   </div>
 
-  <!-- 分頁 6：選手管理 -->
+  <!-- 頁面 6：選手後台 -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
       <div style="display: flex; gap: 8px;">
-        <input type="text" id="newPlayerName" placeholder="輸入新選手名稱..." style="flex: 1; padding: 10px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; color: #fff;">
-        <button type="button" class="btn-submit" style="width: 90px;" id="btnAddPlayer">新增</button>
+        <input type="text" id="newPlayerNameInput" placeholder="輸入新選手名稱..." style="flex: 1; padding: 8px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff;">
+        <button class="btn-submit" style="width: 100px; padding: 8px;" onclick="addNewPlayer()">新增</button>
       </div>
     </div>
     <div class="card">
       <div class="card-title">
-        <span>👥 現役選手名單管理</span>
+        <span>👥 現役選手名單管理 (可修改或刪除)</span>
         <span id="rosterCountBadge" style="font-size: 12px; color: var(--gold);">共 6 位</span>
       </div>
-      <div id="rosterContainer"></div>
+      <div id="rosterListContainer"></div>
     </div>
   </div>
 </div>
 
 <!-- 開場彈窗 -->
-<div class="modal-overlay" id="startModal">
+<div class="modal-overlay" id="startSessionModal">
   <div class="modal">
     <div class="modal-header">
-      <span style="font-weight:bold; font-size:16px;">🚀 開啟新場次聚會</span>
-      <span style="cursor: pointer; font-size: 20px;" id="btnCloseModal">✕</span>
+      <span>🚀 開啟新場次聚會</span>
+      <span style="cursor: pointer; font-size: 18px;" onclick="closeStartSessionModal()">✕</span>
     </div>
     <div class="form-row">
-      <label>📅 牌局日期：</label>
-      <input type="date" id="inputSessionDate">
+      <label>📅 牌局日期 (可自由調整補記)：</label>
+      <input type="date" id="modalSessionDateInput">
     </div>
     <div class="form-row">
       <label>場次名稱：</label>
-      <input type="text" id="inputSessionName">
+      <input type="text" id="modalSessionNameInput">
     </div>
-    <div class="form-row" style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
+    
+    <div class="form-row" style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
       <label style="color:#fff; font-weight:bold; display:flex; align-items:center; cursor:pointer;">
-        <input type="checkbox" id="inputIsHome" checked style="width:22px; height:22px; margin-right:10px;">
-        🏠 在主場打牌 (計算東錢池與硬體攤提)
+        <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:20px; height:20px; margin-right:8px;">
+        🏠 在主場打牌 (計算東錢：50%攤提硬體 / 50%東哥)
       </label>
     </div>
+
     <div class="form-row">
-      <label style="font-weight:bold; color:#fff;">勾選今日出賽選手 (4~8人)：</label>
-      <div id="rosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:8px;"></div>
+      <label style="font-weight:bold; color:#fff;">勾選今日到場打牌之選手 (4~8人)：</label>
+      <div id="modalRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px;"></div>
     </div>
-    <div style="display: flex; gap: 8px; margin-top: 16px;">
-      <button type="button" class="btn-submit" style="flex: 1;" id="btnConfirmStart">確認開場</button>
-      <button type="button" class="btn-action-alt" style="width: 80px;" id="btnCancelModal">取消</button>
+
+    <div style="display: flex; gap: 8px; margin-top: 14px;">
+      <button class="btn-submit" style="flex: 1;" onclick="confirmStartSession()">確認開場</button>
+      <button class="btn-action-alt" style="width: 80px;" onclick="closeStartSessionModal()">取消</button>
     </div>
   </div>
 </div>
 
-<!-- 核心腳本：完全採用標準 EventListener 綁定，徹底與外部網絡解耦 -->
 <script>
-  (function() {
-    const ADMIN_PASSWORD = "3333";
-    const AUTH_KEY = "BEEBEE_ADMIN_AUTH_V30";
-    const LOCAL_KEY = "BEEBEE_MJ_CACHE_V30";
-    const HARDWARE_TARGET = 1800;
-    const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
+  const firebaseConfig = {
+    apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
+    authDomain: "beebee-mj.firebaseapp.com",
+    databaseURL: "https://beebee-mj-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "beebee-mj",
+    storageBucket: "beebee-mj.firebasestorage.app",
+    messagingSenderId: "455969527844",
+    appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
+  };
+  const ADMIN_PASSWORD = "3333";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V23_HARDWARE";
 
-    // 預設資料庫工廠函數
-    function createDB() {
-      const stats = {};
-      DEFAULT_ROSTER.forEach(name => {
-        stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-      });
-      return {
-        version: 30,
-        roster: [...DEFAULT_ROSTER],
-        currentSession: null,
-        totalLeagueMatches: 0,
-        playerStats: stats,
-        hardware: { recovered: 0, target: HARDWARE_TARGET },
-        vault: { totalDong: 0, logs: [] },
-        archivedSessions: []
-      };
+  firebase.initializeApp(firebaseConfig);
+  const dbRef = firebase.database().ref("league_data");
+
+  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
+  const HARDWARE_GOAL = 1800; // 36000元 / 20點 = 1800點
+
+  function createCleanDB() {
+    const stats = {};
+    DEFAULT_ROSTER.forEach(name => {
+      stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    });
+    return {
+      version: 23,
+      roster: [...DEFAULT_ROSTER],
+      currentSession: null,
+      totalLeagueMatches: 0,
+      playerStats: stats,
+      vault: {
+        totalHardwarePaid: 0, // 已回本硬體點數 (上限 1800)
+        totalDongProfit: 0,   // 東哥純益點數
+        logs: []
+      },
+      archivedSessions: []
+    };
+  }
+
+  let DB = createCleanDB();
+  let viewingPlayerDetailName = null;
+
+  function checkPassword() {
+    if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
+      document.getElementById("adminApp").style.display = "block";
+      initDataPipeline();
+      return;
     }
+    const input = prompt("請輸入管理員密碼以進入記分後台：");
+    if (input === ADMIN_PASSWORD) {
+      sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
+      document.getElementById("adminApp").style.display = "block";
+      initDataPipeline();
+    } else {
+      alert("密碼錯誤，拒絕進入。");
+      window.location.href = "beebee-mj-index.html";
+    }
+  }
 
-    let DB = createDB();
-    let selectedPlayerName = null;
-
-    // 1. 讀取本地快取
-    const local = localStorage.getItem(LOCAL_KEY);
+  function initDataPipeline() {
+    const local = localStorage.getItem(LOCAL_CACHE_KEY);
     if (local) {
-      try { DB = JSON.parse(local); } catch(e) {}
+      try {
+        DB = JSON.parse(local);
+        renderAllLocal();
+      } catch(e) {}
     }
+    initFirebaseSync();
+  }
 
-    function saveDB() {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(DB));
-      // 若 Firebase 可用則背景同步
-      if (window.firebaseDBRef) {
-        window.firebaseDBRef.set(DB).catch(function(){});
-      }
-    }
-
-    // 2. 密碼驗證
-    function checkAuth() {
-      const isAuth = localStorage.getItem(AUTH_KEY) === "true";
-      const lock = document.getElementById("lockScreen");
-      if (isAuth && lock) {
-        lock.style.display = "none";
-        lock.remove(); // 徹底從 DOM 拔除，絕不留遮蔽
-      } else if (lock) {
-        lock.style.display = "flex";
-      }
-    }
-
-    function handleUnlock() {
-      const input = document.getElementById("inputAdminPassword");
-      if (input && input.value.trim() === ADMIN_PASSWORD) {
-        localStorage.setItem(AUTH_KEY, "true");
-        const lock = document.getElementById("lockScreen");
-        if (lock) {
-          lock.style.display = "none";
-          lock.remove();
-        }
+  function initFirebaseSync() {
+    dbRef.on("value", snapshot => {
+      const val = snapshot.val();
+      if (val && val.version >= 23) {
+        DB = val;
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+        renderAllLocal();
       } else {
-        alert("密碼錯誤，請重新輸入！");
-        if (input) input.value = "";
+        DB = createCleanDB();
+        saveDBToCloud();
       }
+    });
+  }
+
+  function saveDBToCloud() {
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+    dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
+  }
+
+  function switchTab(tab) {
+    document.getElementById("pageSettle").style.display = tab === 'settle' ? 'block' : 'none';
+    document.getElementById("pageVault").style.display = tab === 'vault' ? 'block' : 'none';
+    document.getElementById("pagePlayerDetail").style.display = tab === 'playerDetail' ? 'block' : 'none';
+    document.getElementById("pageLeaderboard").style.display = tab === 'leaderboard' ? 'block' : 'none';
+    document.getElementById("pageHistory").style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById("pageRoster").style.display = tab === 'roster' ? 'block' : 'none';
+
+    document.getElementById("tabSettleBtn").classList.toggle("active", tab === 'settle');
+    document.getElementById("tabVaultBtn").classList.toggle("active", tab === 'vault');
+    document.getElementById("tabPlayerDetailBtn").classList.toggle("active", tab === 'playerDetail');
+    document.getElementById("tabLeaderboardBtn").classList.toggle("active", tab === 'leaderboard');
+    document.getElementById("tabHistoryBtn").classList.toggle("active", tab === 'history');
+    document.getElementById("tabRosterBtn").classList.toggle("active", tab === 'roster');
+
+    if (tab === 'vault') renderVaultView();
+    if (tab === 'playerDetail') renderPlayerDetailView();
+    if (tab === 'leaderboard') renderLeaderboard();
+    if (tab === 'history') renderArchivedSessions();
+    if (tab === 'roster') renderRosterView();
+  }
+
+  function openStartSessionModal() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const defaultDateStr = `${yyyy}-${mm}-${dd}`;
+
+    document.getElementById("modalSessionDateInput").value = defaultDateStr;
+    document.getElementById("modalSessionNameInput").value = `${today.getMonth()+1}/${today.getDate()} 麻將聚會`;
+    document.getElementById("modalSessionIsHomeCheckbox").checked = true;
+
+    const container = document.getElementById("modalRosterCheckboxes");
+    container.innerHTML = (DB.roster || DEFAULT_ROSTER).map(name => `
+      <label style="display:flex; align-items:center; background:#1e293b; padding:8px; border-radius:6px; cursor:pointer;">
+        <input type="checkbox" value="${name}" class="roster-chk" checked style="width:18px; height:18px; margin-right:6px;">
+        ${name}
+      </label>
+    `).join("");
+
+    document.getElementById("startSessionModal").classList.add("active");
+  }
+
+  function closeStartSessionModal() {
+    document.getElementById("startSessionModal").classList.remove("active");
+  }
+
+  function confirmStartSession() {
+    const rawDate = document.getElementById("modalSessionDateInput").value;
+    let displayDate = "";
+    if (rawDate) {
+      const parts = rawDate.split("-");
+      displayDate = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    } else {
+      const now = new Date();
+      displayDate = `${now.getMonth()+1}/${now.getDate()}`;
     }
 
-    // 3. 分頁切換
-    function switchTab(tabKey) {
-      const pages = {
-        settle: document.getElementById("pageSettle"),
-        vault: document.getElementById("pageVault"),
-        playerDetail: document.getElementById("pagePlayerDetail"),
-        leaderboard: document.getElementById("pageLeaderboard"),
-        history: document.getElementById("pageHistory"),
-        roster: document.getElementById("pageRoster")
-      };
-
-      for (let k in pages) {
-        if (pages[k]) pages[k].style.display = (k === tabKey) ? "block" : "none";
-      }
-
-      const buttons = document.querySelectorAll(".tab-btn");
-      buttons.forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-tab") === tabKey);
-      });
-
-      if (tabKey === "vault") renderVault();
-      if (tabKey === "playerDetail") renderPlayerDetail();
-      if (tabKey === "leaderboard") renderLeaderboard();
-      if (tabKey === "history") renderArchived();
-      if (tabKey === "roster") renderRoster();
+    const name = document.getElementById("modalSessionNameInput").value.trim() || `${displayDate} 麻將聚會`;
+    const isHome = document.getElementById("modalSessionIsHomeCheckbox").checked;
+    
+    const checkedPlayers = Array.from(document.querySelectorAll(".roster-chk:checked")).map(el => el.value);
+    if (checkedPlayers.length < 4) {
+      alert("請至少勾選 4 位出賽選手！");
+      return;
     }
 
-    // 4. 開場與結算
-    function openStartModal() {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      
-      document.getElementById("inputSessionDate").value = `${yyyy}-${mm}-${dd}`;
-      document.getElementById("inputSessionName").value = `${today.getMonth()+1}/${today.getDate()} 麻將聚會`;
-      document.getElementById("inputIsHome").checked = true;
+    DB.currentSession = {
+      id: "SESSION_" + Date.now(),
+      name: name,
+      date: displayDate,
+      fullDate: rawDate,
+      isHome: isHome,
+      players: checkedPlayers
+    };
 
-      const container = document.getElementById("rosterCheckboxes");
-      container.innerHTML = (DB.roster || DEFAULT_ROSTER).map(name => `
-        <label style="display:flex; align-items:center; background:#0f172a; padding:10px; border-radius:8px; cursor:pointer;">
-          <input type="checkbox" value="${name}" class="roster-chk" checked style="width:20px; height:20px; margin-right:8px;">
-          <span style="font-weight:bold; font-size:14px;">${name}</span>
-        </label>
-      `).join("");
+    closeStartSessionModal();
+    renderAllLocal();
+    saveDBToCloud();
+  }
 
-      document.getElementById("startModal").style.display = "flex";
+  function cancelCurrentSession() {
+    if (!confirm("確定要取消當前進行中的場次嗎？未結算的資料將捨棄。")) return;
+    DB.currentSession = null;
+    renderAllLocal();
+    saveDBToCloud();
+  }
+
+  function renderAllLocal() {
+    renderSessionStatus();
+    renderSettleInputs();
+    renderLeaderboard();
+    renderVaultView();
+    renderArchivedSessions();
+    renderRosterView();
+    if (document.getElementById("pagePlayerDetail").style.display === "block") {
+      renderPlayerDetailView();
     }
+  }
 
-    function closeStartModal() {
-      document.getElementById("startModal").style.display = "none";
+  function renderSessionStatus() {
+    const titleEl = document.getElementById("sessionStatusTitle");
+    const btnEl = document.getElementById("btnToggleSession");
+    const activeArea = document.getElementById("activeSessionInputArea");
+
+    if (DB.currentSession) {
+      const homeText = DB.currentSession.isHome ? "🏠 主場 (計東)" : "🚗 外場 (無東)";
+      titleEl.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (${DB.currentSession.date} ｜ ${homeText})`;
+      btnEl.style.display = "none";
+      activeArea.style.display = "block";
+    } else {
+      titleEl.innerText = "牌桌待機中 (尚未開場)";
+      btnEl.style.display = "block";
+      activeArea.style.display = "none";
     }
+  }
 
-    function confirmStart() {
-      const rawDate = document.getElementById("inputSessionDate").value;
-      let displayDate = "";
-      if (rawDate) {
-        const parts = rawDate.split("-");
-        displayDate = `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+  function renderSettleInputs() {
+    if (!DB.currentSession) return;
+    const isHome = DB.currentSession.isHome !== false;
+    document.getElementById("homeTagBadge").innerText = isHome ? "🏠 主場 (計東)" : "🚗 外場 (免東)";
+    document.getElementById("dongInputBlock").style.display = isHome ? "block" : "none";
+
+    // 提示目前硬體是否已滿
+    const curHw = DB.vault ? (DB.vault.totalHardwarePaid || 0) : 0;
+    const isHwFulfilled = curHw >= HARDWARE_GOAL;
+    const splitTextEl = document.getElementById("dongSplitPreviewText");
+    if (splitTextEl) {
+      if (isHwFulfilled) {
+        splitTextEl.innerText = "🎉 硬體成本已滿額回本！東錢 100% 全額歸入東哥純益";
+        splitTextEl.style.color = "var(--gold)";
       } else {
-        const now = new Date();
-        displayDate = `${now.getMonth()+1}/${now.getDate()}`;
+        splitTextEl.innerText = `尚未滿額 (目前已攤提 ${curHw}/${HARDWARE_GOAL})：50% 撥入硬體回本池 ｜ 50% 撥入東哥純益`;
+        splitTextEl.style.color = "#38bdf8";
       }
-
-      const name = document.getElementById("inputSessionName").value.trim() || `${displayDate} 麻將聚會`;
-      const isHome = document.getElementById("inputIsHome").checked;
-      
-      const checked = Array.from(document.querySelectorAll(".roster-chk:checked")).map(el => el.value);
-      if (checked.length < 4) {
-        alert("請至少勾選 4 位出賽選手！");
-        return;
-      }
-
-      DB.currentSession = {
-        name: name,
-        date: displayDate,
-        fullDate: rawDate,
-        isHome: isHome,
-        players: checked
-      };
-
-      closeStartModal();
-      renderAll();
-      saveDB();
     }
 
-    function cancelSession() {
-      if (!confirm("確定要取消當前進行中的場次嗎？未結算的資料將捨棄。")) return;
-      DB.currentSession = null;
-      renderAll();
-      saveDB();
+    const tbody = document.getElementById("settleInputRows");
+    tbody.innerHTML = (DB.currentSession.players || []).map(name => `
+      <tr>
+        <td style="font-weight:bold; font-size:14px; text-align:left;">${name}</td>
+        <td>
+          <input type="number" min="1" max="20" value="2" class="settle-input input-matches" id="matches-${name}">
+        </td>
+        <td>
+          <input type="number" step="10" value="0" class="settle-input input-score" id="score-${name}" oninput="checkSumBalance()">
+        </td>
+      </tr>
+    `).join("");
+
+    checkSumBalance();
+  }
+
+  function checkSumBalance() {
+    if (!DB.currentSession) return 0;
+    const isHome = DB.currentSession.isHome !== false;
+    let sum = 0;
+
+    (DB.currentSession.players || []).forEach(name => {
+      const inputEl = document.getElementById(`score-${name}`);
+      sum += inputEl ? (parseInt(inputEl.value) || 0) : 0;
+    });
+
+    const dongEl = document.getElementById("inputDongPoolScore");
+    const dongPool = (isHome && dongEl) ? (parseInt(dongEl.value) || 0) : 0;
+    
+    const totalBalance = sum + dongPool;
+
+    const displayEl = document.getElementById("checkSumDisplay");
+    const badgeEl = document.getElementById("checkSumBadge");
+    displayEl.innerText = totalBalance > 0 ? `+${totalBalance}` : totalBalance;
+
+    if (totalBalance === 0) {
+      displayEl.style.color = "var(--win)";
+      badgeEl.innerText = "✅ 完美平衡 (選手+東哥 總和為 0)";
+      badgeEl.style.color = "var(--win)";
+    } else {
+      displayEl.style.color = "var(--lose)";
+      badgeEl.innerText = `⚠️ 差額 ${totalBalance} 點 (請核對籌碼)`;
+      badgeEl.style.color = "var(--lose)";
     }
 
-    function checkBalance() {
-      if (!DB.currentSession) return 0;
-      const isHome = DB.currentSession.isHome !== false;
-      let sum = 0;
+    return totalBalance;
+  }
 
-      (DB.currentSession.players || []).forEach(name => {
-        const el = document.getElementById(`score-${name}`);
-        sum += el ? (parseInt(el.value) || 0) : 0;
-      });
+  // 完成本場結算 (分離場次將數、個人將數，並拆分 50/50 東錢)
+  function submitSessionSettlement() {
+    if (!DB.currentSession) return;
+    const diff = checkSumBalance();
+    if (diff !== 0) {
+      if (!confirm(`含東哥在內，全場籌碼合計尚有差額 ${diff} 點，確定要強制結算嗎？`)) return;
+    }
 
-      const dongEl = document.getElementById("inputDongPool");
-      const dong = (isHome && dongEl) ? (parseInt(dongEl.value) || 0) : 0;
-      const balance = sum + dong;
+    const isHome = DB.currentSession.isHome !== false;
+    const dongEl = document.getElementById("inputDongPoolScore");
+    const totalDong = isHome ? (parseInt(dongEl.value) || 0) : 0;
 
-      const display = document.getElementById("checkSumDisplay");
-      const badge = document.getElementById("checkSumBadge");
-      display.innerText = balance > 0 ? `+${balance}` : balance;
+    // 1. 抓取牌桌實際進行總將數
+    const actualSessionTotalMatches = parseInt(document.getElementById("inputSessionActualTotalMatches").value) || 1;
 
-      if (balance === 0) {
-        display.style.color = "var(--win)";
-        badge.innerText = "✅ 完美平衡 (總和為 0)";
-        badge.style.color = "var(--win)";
+    // 2. 東錢 50/50 拆分計算 (目標 1800 點)
+    let allocatedToHardware = 0;
+    let allocatedToProfit = 0;
+
+    if (isHome && totalDong > 0) {
+      if (!DB.vault) DB.vault = { totalHardwarePaid: 0, totalDongProfit: 0, logs: [] };
+      const currentHwPaid = DB.vault.totalHardwarePaid || 0;
+      const remainHw = Math.max(0, HARDWARE_GOAL - currentHwPaid);
+
+      if (remainHw <= 0) {
+        // 已全部回本 -> 100% 歸東哥純益
+        allocatedToHardware = 0;
+        allocatedToProfit = totalDong;
       } else {
-        display.style.color = "var(--lose)";
-        badge.innerText = `⚠️ 差額 ${balance} 點`;
-        badge.style.color = "var(--lose)";
-      }
-
-      return balance;
-    }
-
-    function submitSettlement() {
-      if (!DB.currentSession) return;
-      const diff = checkBalance();
-      if (diff !== 0) {
-        if (!confirm(`含東哥在內，全場籌碼合計尚有差額 ${diff} 點，確定要強制結算嗎？`)) return;
-      }
-
-      const totalMatches = parseInt(document.getElementById("inputSessionMatches").value) || 1;
-      const isHome = DB.currentSession.isHome !== false;
-      const dongEl = document.getElementById("inputDongPool");
-      const dongPool = isHome ? (parseInt(dongEl.value) || 0) : 0;
-
-      if (!DB.hardware) DB.hardware = { recovered: 0, target: HARDWARE_TARGET };
-      let toHardware = 0;
-      let toDong = 0;
-
-      if (isHome && dongPool > 0) {
-        const needed = Math.max(0, HARDWARE_TARGET - DB.hardware.recovered);
-        if (needed <= 0) {
-          toDong = dongPool;
+        // 未滿 1800 點 -> 一半計硬體，一半計東哥
+        const half = Math.floor(totalDong / 2);
+        if (half <= remainHw) {
+          allocatedToHardware = half;
+          allocatedToProfit = totalDong - half;
         } else {
-          const half = Math.floor(dongPool / 2);
-          if (half <= needed) {
-            toHardware = half;
-            toDong = dongPool - half;
-          } else {
-            toHardware = needed;
-            toDong = dongPool - needed;
-          }
+          // 本次一半超過剩餘硬體額度 -> 補滿 1800 點後，其餘全撥入東哥
+          allocatedToHardware = remainHw;
+          allocatedToProfit = totalDong - remainHw;
         }
-        DB.hardware.recovered += toHardware;
       }
 
-      const results = [];
-      (DB.currentSession.players || []).forEach(name => {
-        const sc = parseInt(document.getElementById(`score-${name}`).value) || 0;
-        const mc = parseInt(document.getElementById(`matches-${name}`).value) || 1;
-        results.push({ name: name, finalScore: sc, matchesPlayed: mc });
-      });
-
-      results.forEach(res => {
-        if (!DB.playerStats[res.name]) {
-          DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-        }
-        DB.playerStats[res.name].totalScore += res.finalScore;
-        DB.playerStats[res.name].sessionsPlayed += 1;
-        DB.playerStats[res.name].matchesPlayed += res.matchesPlayed;
-        if (res.finalScore > 0) DB.playerStats[res.name].winsCount += 1;
-      });
-
-      DB.totalLeagueMatches += totalMatches;
-
-      if (isHome && dongPool > 0) {
-        if (!DB.vault) DB.vault = { totalDong: 0, logs: [] };
-        DB.vault.totalDong += toDong;
-        DB.vault.logs.unshift({
-          sessionName: DB.currentSession.name,
-          date: DB.currentSession.date,
-          totalDongCollected: dongPool,
-          allocatedHardware: toHardware,
-          allocatedDong: toDong,
-          matches: totalMatches
-        });
-      }
-
-      if (!DB.archivedSessions) DB.archivedSessions = [];
-      DB.archivedSessions.unshift({
-        name: DB.currentSession.name,
+      DB.vault.totalHardwarePaid += allocatedToHardware;
+      DB.vault.totalDongProfit += allocatedToProfit;
+      DB.vault.logs.unshift({
+        sessionName: DB.currentSession.name,
         date: DB.currentSession.date,
-        fullDate: DB.currentSession.fullDate,
-        isHome: isHome,
-        totalDong: dongPool,
-        allocatedHardware: toHardware,
-        allocatedDong: toDong,
-        sessionTotalMatches: totalMatches,
-        results: results
+        totalDong: totalDong,
+        toHardware: allocatedToHardware,
+        toProfit: allocatedToProfit,
+        actualMatches: actualSessionTotalMatches
       });
-
-      alert(`【${DB.currentSession.name}】結算完成！\n整場打牌：${totalMatches} 將\n實收東錢：+${dongPool} (硬體+${toHardware}，東哥+${toDong})`);
-
-      DB.currentSession = null;
-      renderAll();
-      saveDB();
-      switchTab("leaderboard");
     }
 
-    // 5. 渲染各模組
-    function renderSettle() {
-      const bannerTitle = document.getElementById("sessionStatusTitle");
-      const btnToggle = document.getElementById("btnOpenSession");
-      const area = document.getElementById("activeSessionArea");
+    // 3. 收集各選手個人戰績
+    const sessionResults = [];
+    (DB.currentSession.players || []).forEach(name => {
+      const sc = parseInt(document.getElementById(`score-${name}`).value) || 0;
+      const mc = parseInt(document.getElementById(`matches-${name}`).value) || 1; // 個人出賽將數
 
-      if (DB.currentSession) {
-        const tag = DB.currentSession.isHome ? "🏠 主場 (計東)" : "🚗 外場 (無東)";
-        bannerTitle.innerHTML = `<span style="color:var(--gold);">${DB.currentSession.name}</span> (${DB.currentSession.date} ｜ ${tag})`;
-        btnToggle.style.display = "none";
-        area.style.display = "block";
+      sessionResults.push({
+        name: name,
+        finalScore: sc,
+        matchesPlayed: mc
+      });
+    });
 
-        document.getElementById("homeTagBadge").innerText = tag;
-        document.getElementById("dongInputBlock").style.display = DB.currentSession.isHome ? "block" : "none";
-
-        const tbody = document.getElementById("settleRows");
-        tbody.innerHTML = (DB.currentSession.players || []).map(name => `
-          <tr>
-            <td style="font-weight:bold; font-size:14px; text-align:left;">${name}</td>
-            <td><input type="number" min="1" max="20" value="2" class="settle-input" id="matches-${name}"></td>
-            <td><input type="number" step="10" value="0" class="settle-input input-score" id="score-${name}"></td>
-          </tr>
-        `).join("");
-
-        const inputs = tbody.querySelectorAll(".input-score");
-        inputs.forEach(inp => inp.addEventListener("input", checkBalance));
-        checkBalance();
-      } else {
-        bannerTitle.innerText = "牌桌待機中 (尚未開場)";
-        btnToggle.style.display = "block";
-        area.style.display = "none";
+    // 4. 更新選手生涯總榜
+    sessionResults.forEach(res => {
+      if (!DB.playerStats[res.name]) {
+        DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
       }
+      DB.playerStats[res.name].totalScore += res.finalScore;
+      DB.playerStats[res.name].sessionsPlayed += 1;
+      DB.playerStats[res.name].matchesPlayed += res.matchesPlayed; // 只累計個人打的將數
+      if (res.finalScore > 0) DB.playerStats[res.name].winsCount += 1;
+    });
+
+    // 全聯賽總將數累加的是「牌桌實際總將數」
+    DB.totalLeagueMatches += actualSessionTotalMatches;
+
+    // 5. 歸檔場次歷史紀錄
+    if (!DB.archivedSessions) DB.archivedSessions = [];
+    DB.archivedSessions.unshift({
+      name: DB.currentSession.name,
+      date: DB.currentSession.date,
+      fullDate: DB.currentSession.fullDate,
+      isHome: isHome,
+      totalDong: totalDong,
+      dongHardware: allocatedToHardware,
+      dongProfit: allocatedToProfit,
+      actualMatches: actualSessionTotalMatches, // 本場實際打的將數
+      results: sessionResults
+    });
+
+    alert(`【${DB.currentSession.name}】已成功結算歸檔！\n本場共進行 ${actualSessionTotalMatches} 將。`);
+    DB.currentSession = null;
+    renderAllLocal();
+    saveDBToCloud();
+    switchTab('leaderboard');
+  }
+
+  // --- 東哥金庫渲染 (回本進度條與紀錄) ---
+  function renderVaultView() {
+    const vault = DB.vault || { totalHardwarePaid: 0, totalDongProfit: 0, logs: [] };
+    const hwPaid = vault.totalHardwarePaid || 0;
+    const dongProfit = vault.totalDongProfit || 0;
+
+    document.getElementById("vaultHardwarePaidTotal").innerText = `${hwPaid} 點`;
+    document.getElementById("vaultDongProfitTotal").innerText = `${dongProfit} 點`;
+
+    const pct = Math.min(100, ((hwPaid / HARDWARE_GOAL) * 100)).toFixed(1);
+    const remain = Math.max(0, HARDWARE_GOAL - hwPaid);
+
+    document.getElementById("hardwareProgressBar").style.width = `${pct}%`;
+    document.getElementById("hardwareStatusBadge").innerText = `${hwPaid} / ${HARDWARE_GOAL} 點 (${pct}%)`;
+    document.getElementById("hardwareProgressText").innerText = `已回本：${hwPaid} 點 (${pct}%) ｜ 折合約 NT$ ${hwPaid * 20}`;
+    document.getElementById("hardwareRemainText").innerText = remain > 0 ? `尚差：${remain} 點 (約 NT$ ${remain * 20})` : "🎉 已全額回本！";
+
+    const container = document.getElementById("vaultHistoryContainer");
+    if (!vault.logs || vault.logs.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">尚無東哥收入紀錄</div>`;
+      return;
     }
 
-    function renderVault() {
-      if (!DB.hardware) DB.hardware = { recovered: 0, target: HARDWARE_TARGET };
-      const hw = DB.hardware;
-      const pct = Math.min(100, ((hw.recovered / HARDWARE_TARGET) * 100)).toFixed(1);
-      
-      document.getElementById("hardwareStatusBadge").innerText = `${pct}% ${hw.recovered >= HARDWARE_TARGET ? '🎉 已完全回本' : '攤提中'}`;
-      document.getElementById("hardwareBar").style.width = `${pct}%`;
-      document.getElementById("hwRecoveredDisplay").innerText = hw.recovered;
-      document.getElementById("hwRemainingDisplay").innerText = Math.max(0, HARDWARE_TARGET - hw.recovered);
-
-      const vault = DB.vault || { totalDong: 0, logs: [] };
-      document.getElementById("vaultTotalBadge").innerText = `累計純收益：${vault.totalDong || 0} 點`;
-
-      const container = document.getElementById("vaultHistoryList");
-      if (!vault.logs || vault.logs.length === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">尚無東哥拆分紀錄</div>`;
-        return;
-      }
-
-      container.innerHTML = vault.logs.map(log => `
-        <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:8px; padding:10px; margin-bottom:8px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b style="color:#fff;">${log.sessionName} (${log.date})</b>
-            <span style="color:var(--gold); font-size:15px; font-weight:bold;">實收 +${log.totalDongCollected} 點</span>
-          </div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px; display:flex; justify-content:space-between;">
-            <span>🛠️ 硬體攤提：<b>+${log.allocatedHardware || 0}</b> 點</span>
-            <span>👑 東哥純益：<b style="color:var(--primary);">+${log.allocatedDong || 0}</b> 點</span>
-          </div>
+    container.innerHTML = vault.logs.map(log => `
+      <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:8px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <b style="color:#fff;">${log.sessionName}</b>
+          <span style="font-size:12px; color:var(--text-muted); display:block;">${log.date} ｜ 實際總打 ${log.actualMatches} 將</span>
+          <span style="font-size:11px; color:#38bdf8; display:block; margin-top:2px;">
+            🛠️ 硬體攤提 +${log.toHardware || 0} 點 ｜ 👑 東哥純益 +${log.toProfit || 0} 點
+          </span>
         </div>
-      `).join("");
+        <span style="color:var(--gold); font-size:16px; font-weight:900; font-family:monospace;">+${log.totalDong} 點</span>
+      </div>
+    `).join("");
+  }
+
+  function renderPlayerDetailView() {
+    const pillsContainer = document.getElementById("playerProfilePills");
+    const roster = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
+
+    pillsContainer.innerHTML = roster.map(name => `
+      <button class="btn-sm" style="background:${viewingPlayerDetailName === name ? 'var(--primary)' : '#0f172a'}; color:${viewingPlayerDetailName === name ? '#000' : '#fff'};" onclick="selectPlayerForDetail('${name}')">
+        ${name}
+      </button>
+    `).join("");
+
+    if (!viewingPlayerDetailName && roster.length > 0) viewingPlayerDetailName = roster[0];
+    if (!viewingPlayerDetailName) return;
+
+    document.getElementById("playerDetailContent").style.display = "block";
+    const name = viewingPlayerDetailName;
+    const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
+
+    document.getElementById("detailPlayerName").innerText = name;
+    document.getElementById("detailPlayerSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人總出賽 ${stats.matchesPlayed} 將`;
+    const scoreEl = document.getElementById("detailPlayerScore");
+    scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
+    scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
+
+    const historyPoints = [0];
+    const matchHistoryLogs = [];
+
+    (DB.archivedSessions || []).slice().reverse().forEach(sess => {
+      const res = (sess.results || []).find(r => r.name === name);
+      if (res) {
+        const lastScore = historyPoints[historyPoints.length - 1];
+        historyPoints.push(lastScore + res.finalScore);
+        matchHistoryLogs.unshift({
+          title: `${sess.name} (${sess.date})`,
+          score: res.finalScore,
+          matches: res.matchesPlayed
+        });
+      }
+    });
+
+    renderTrendSVG(historyPoints);
+
+    const historyListContainer = document.getElementById("detailMatchHistoryList");
+    if (matchHistoryLogs.length === 0) {
+      historyListContainer.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:10px;">尚無出賽完賽紀錄</div>`;
+      return;
     }
 
-    function renderPlayerDetail() {
-      const container = document.getElementById("playerProfilePills");
-      const roster = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
+    historyListContainer.innerHTML = matchHistoryLogs.map(item => `
+      <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <b>${item.title}</b>
+          <span style="font-size:11px; color:var(--text-muted); display:block;">個人出賽 ${item.matches} 將</span>
+        </div>
+        <span style="color:${item.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:16px;">
+          ${item.score >= 0 ? '+'+item.score : item.score}
+        </span>
+      </div>
+    `).join("");
+  }
 
-      container.innerHTML = roster.map(name => `
-        <button type="button" class="btn-sm btn-pill" style="background:${selectedPlayerName === name ? 'var(--primary)' : '#0f172a'}; color:${selectedPlayerName === name ? '#000' : '#fff'};" data-name="${name}">
-          ${name}
-        </button>
-      `).join("");
+  function selectPlayerForDetail(name) {
+    viewingPlayerDetailName = name;
+    renderPlayerDetailView();
+  }
 
-      container.querySelectorAll(".btn-pill").forEach(btn => {
-        btn.addEventListener("click", function() {
-          selectedPlayerName = this.getAttribute("data-name");
-          renderPlayerDetail();
-        });
-      });
+  function renderTrendSVG(points) {
+    const container = document.getElementById("detailChartContainer");
+    if (points.length <= 1) {
+      container.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:60px 0;">出賽 1 場以上後繪製走勢</div>`;
+      return;
+    }
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = (max - min) || 1;
+    const w = 600, h = 140;
 
-      if (!selectedPlayerName && roster.length > 0) selectedPlayerName = roster[0];
-      if (!selectedPlayerName) return;
+    const coords = points.map((val, idx) => {
+      const x = 20 + (idx / (points.length - 1)) * (w - 40);
+      const y = h - 20 - ((val - min) / range) * (h - 40);
+      return `${x},${y}`;
+    }).join(" ");
+    const zeroY = h - 20 - ((0 - min) / range) * (h - 40);
 
-      document.getElementById("playerDetailContent").style.display = "block";
-      const name = selectedPlayerName;
-      const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
-
-      document.getElementById("detailName").innerText = name;
-      document.getElementById("detailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人共打了 ${stats.matchesPlayed} 將`;
-      const scoreEl = document.getElementById("detailScore");
-      scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
-      scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
-
-      const points = [0];
-      const logs = [];
-
-      (DB.archivedSessions || []).slice().reverse().forEach(sess => {
-        const res = (sess.results || []).find(r => r.name === name);
-        if (res) {
-          points.push(points[points.length - 1] + res.finalScore);
-          logs.unshift({
-            title: `${sess.name} (${sess.date})`,
-            score: res.finalScore,
-            matches: res.matchesPlayed
-          });
-        }
-      });
-
-      // 繪製 SVG 走勢圖
-      const chartBox = document.getElementById("detailChart");
-      if (points.length <= 1) {
-        chartBox.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:60px 0;">出賽 1 場以上後繪製走勢</div>`;
-      } else {
-        const min = Math.min(...points);
-        const max = Math.max(...points);
-        const range = (max - min) || 1;
-        const w = 600, h = 140;
-        const coords = points.map((val, idx) => {
+    container.innerHTML = `
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:100%;">
+        <line x1="20" y1="${zeroY}" x2="${w-20}" y2="${zeroY}" stroke="#475569" stroke-dasharray="4" />
+        <polyline fill="none" stroke="var(--primary)" stroke-width="3" points="${coords}" />
+        ${points.map((val, idx) => {
           const x = 20 + (idx / (points.length - 1)) * (w - 40);
           const y = h - 20 - ((val - min) / range) * (h - 40);
-          return `${x},${y}`;
-        }).join(" ");
-        const zeroY = h - 20 - ((0 - min) / range) * (h - 40);
+          return `<circle cx="${x}" cy="${y}" r="4" fill="${val >= 0 ? 'var(--win)' : 'var(--lose)'}" />`;
+        }).join("")}
+      </svg>
+    `;
+  }
 
-        chartBox.innerHTML = `
-          <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:100%;">
-            <line x1="20" y1="${zeroY}" x2="${w-20}" y2="${zeroY}" stroke="#475569" stroke-dasharray="4" />
-            <polyline fill="none" stroke="var(--primary)" stroke-width="3" points="${coords}" />
-            ${points.map((val, idx) => {
-              const x = 20 + (idx / (points.length - 1)) * (w - 40);
-              const y = h - 20 - ((val - min) / range) * (h - 40);
-              return `<circle cx="${x}" cy="${y}" r="4" fill="${val >= 0 ? 'var(--win)' : 'var(--lose)'}" />`;
-            }).join("")}
-          </svg>
-        `;
-      }
+  function renderLeaderboard() {
+    const tbody = document.getElementById("leagueLeaderboardBody");
+    tbody.innerHTML = "";
+    const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
+    document.getElementById("totalLeagueMatchesCountDisplay").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
 
-      const listContainer = document.getElementById("detailLogsList");
-      if (logs.length === 0) {
-        listContainer.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:10px;">尚無出賽完賽紀錄</div>`;
-      } else {
-        listContainer.innerHTML = logs.map(item => `
-          <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <b>${item.title}</b>
-              <span style="font-size:11px; color:var(--text-muted); display:block;">出賽 ${item.matches} 將</span>
-            </div>
-            <span style="color:${item.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:16px;">
-              ${item.score >= 0 ? '+'+item.score : item.score}
-            </span>
-          </div>
-        `).join("");
-      }
-    }
+    const sorted = (DB.roster || DEFAULT_ROSTER).map(name => {
+      const p = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+      const winRate = p.sessionsPlayed > 0 ? ((p.winsCount / p.sessionsPlayed) * 100).toFixed(1) + "%" : "0.0%";
+      return { name, ...p, winRate };
+    }).sort((a, b) => b.totalScore - a.totalScore);
 
-    function renderLeaderboard() {
-      const tbody = document.getElementById("leaderboardBody");
-      tbody.innerHTML = "";
-      const totalSessions = DB.archivedSessions ? DB.archivedSessions.length : 0;
-      document.getElementById("totalMatchesBadge").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
-
-      const sorted = (DB.roster || DEFAULT_ROSTER).map(name => {
-        const p = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-        const winRate = p.sessionsPlayed > 0 ? ((p.winsCount / p.sessionsPlayed) * 100).toFixed(1) + "%" : "0.0%";
-        return { name, ...p, winRate };
-      }).sort((a, b) => b.totalScore - a.totalScore);
-
-      sorted.forEach((p, idx) => {
-        let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
-        tbody.innerHTML += `
-          <tr>
-            <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
-            <td style="font-weight: bold; text-align: left;">${p.name}</td>
-            <td style="color: ${color}; font-size: 14px; font-weight:bold; font-family:monospace;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
-            <td>${p.sessionsPlayed}</td>
-            <td>${p.matchesPlayed}</td>
-            <td style="color:var(--gold); font-weight:bold;">${p.winRate}</td>
-          </tr>
-        `;
-      });
-    }
-
-    function renderArchived() {
-      const container = document.getElementById("archivedList");
-      const sessions = DB.archivedSessions || [];
-      document.getElementById("totalSessionsBadge").innerText = `共 ${sessions.length} 場`;
-
-      if (sessions.length === 0) {
-        container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無已封存場次</div>`;
-        return;
-      }
-
-      container.innerHTML = sessions.map((sess, sIdx) => {
-        const resultsHtml = (sess.results || []).map(r => {
-          const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
-          return `<span>${r.name}(${r.matchesPlayed}將): <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>`;
-        }).join(" ｜ ");
-
-        const dongBadge = (sess.totalDong > 0) 
-          ? `<span style="color:var(--gold); font-size:12px; margin-left:8px;">(東池 +${sess.totalDong} ｜ 硬體+${sess.allocatedHardware || 0}、東哥+${sess.allocatedDong || 0})</span>` 
-          : '';
-
-        return `
-          <div class="session-archive-card">
-            <div class="session-archive-header">
-              <div>
-                <b style="color:#fff;">📁 ${sess.name}</b>
-                <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || 1} 將)</span>
-                ${dongBadge}
-              </div>
-              <button type="button" class="btn-action-alt btn-danger btn-del-archive" data-idx="${sIdx}">刪除場次</button>
-            </div>
-            <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
-              ${resultsHtml} ${sess.totalDong > 0 ? `<br><span style="color:var(--gold); font-size:12px;">💰 東池實收：+${sess.totalDong} 點 (硬體攤提 +${sess.allocatedHardware \vert{}\vert{} 0} ｜ 東哥純益 +${sess.allocatedDong || 0})</span>` : ''}
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      container.querySelectorAll(".btn-del-archive").forEach(btn => {
-        btn.addEventListener("click", function() {
-          const sIdx = parseInt(this.getAttribute("data-idx"));
-          if (!confirm("確定刪除此場次紀錄？所有選手積分、將數、硬體攤提與東哥金庫將連帶扣除回滾！")) return;
-          const sess = DB.archivedSessions[sIdx];
-
-          (sess.results || []).forEach(r => {
-            if (DB.playerStats[r.name]) {
-              DB.playerStats[r.name].totalScore -= r.finalScore;
-              DB.playerStats[r.name].sessionsPlayed = Math.max(0, DB.playerStats[r.name].sessionsPlayed - 1);
-              DB.playerStats[r.name].matchesPlayed = Math.max(0, DB.playerStats[r.name].matchesPlayed - r.matchesPlayed);
-              if (r.finalScore > 0) DB.playerStats[r.name].winsCount = Math.max(0, DB.playerStats[r.name].winsCount - 1);
-            }
-          });
-
-          if (sess.allocatedHardware && DB.hardware) {
-            DB.hardware.recovered = Math.max(0, DB.hardware.recovered - sess.allocatedHardware);
-          }
-          if (sess.allocatedDong && DB.vault) {
-            DB.vault.totalDong = Math.max(0, DB.vault.totalDong - sess.allocatedDong);
-            DB.vault.logs = (DB.vault.logs || []).filter(l => l.sessionName !== sess.name);
-          }
-
-          DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - (sess.sessionTotalMatches || 1));
-          DB.archivedSessions.splice(sIdx, 1);
-
-          renderAll();
-          saveDB();
-        });
-      });
-    }
-
-    function renderRoster() {
-      const container = document.getElementById("rosterContainer");
-      document.getElementById("rosterCountBadge").innerText = `共 ${(DB.roster || []).length} 位`;
-      container.innerHTML = "";
-
-      (DB.roster || []).forEach(name => {
-        const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
-        container.innerHTML += `
-          <div class="roster-item">
-            <div>
-              <div style="font-weight: bold; font-size: 15px;">${name}</div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-                出賽: <b style="color:var(--gold);">${stats.sessionsPlayed}</b> 場 (${stats.matchesPlayed} 將) ｜ 總分: <b>${stats.totalScore}</b>
-              </div>
-            </div>
-            <div class="roster-actions" style="display:flex; gap:6px;">
-              <button type="button" class="btn-sm btn-edit btn-rename" data-name="${name}">✏️ 改名</button>
-              <button type="button" class="btn-sm btn-del btn-remove" data-name="${name}">🗑️ 刪除</button>
-            </div>
-          </div>
-        `;
-      });
-
-      container.querySelectorAll(".btn-rename").forEach(btn => {
-        btn.addEventListener("click", function() {
-          const oldName = this.getAttribute("data-name");
-          const newName = prompt(`請輸入選手【${oldName}】的新名稱：`, oldName);
-          if (!newName || newName.trim() === "" || newName.trim() === oldName) return;
-          const cleanName = newName.trim();
-          if (DB.roster.includes(cleanName)) return;
-
-          const rIdx = DB.roster.indexOf(oldName);
-          if (rIdx !== -1) DB.roster[rIdx] = cleanName;
-          DB.playerStats[cleanName] = DB.playerStats[oldName];
-          delete DB.playerStats[oldName];
-
-          if (DB.currentSession && DB.currentSession.players) {
-            DB.currentSession.players = DB.currentSession.players.map(s => s === oldName ? cleanName : s);
-          }
-
-          (DB.archivedSessions || []).forEach(sess => {
-            (sess.results || []).forEach(r => {
-              if (r.name === oldName) r.name = cleanName;
-            });
-          });
-          renderAll();
-          saveDB();
-        });
-      });
-
-      container.querySelectorAll(".btn-remove").forEach(btn => {
-        btn.addEventListener("click", function() {
-          const name = this.getAttribute("data-name");
-          if (DB.roster.length <= 4 || (DB.currentSession && DB.currentSession.players.includes(name))) {
-            alert("選手不足 4 人或正在出賽中，無法刪除！");
-            return;
-          }
-          if (!confirm(`確定刪除選手【${name}】？`)) return;
-          DB.roster = DB.roster.filter(n => n !== name);
-          delete DB.playerStats[name];
-          renderAll();
-          saveDB();
-        });
-      });
-    }
-
-    function renderAll() {
-      renderSettle();
-      renderVault();
-      renderLeaderboard();
-      renderArchived();
-      renderRoster();
-    }
-
-    // 6. 核心事件綁定 (DOM 就緒立即掛載)
-    document.addEventListener("DOMContentLoaded", function() {
-      checkAuth();
-      renderAll();
-
-      // 解鎖事件
-      const btnUnlock = document.getElementById("btnUnlock");
-      if (btnUnlock) btnUnlock.addEventListener("click", handleUnlock);
-      const inputPwd = document.getElementById("inputAdminPassword");
-      if (inputPwd) {
-        inputPwd.addEventListener("keydown", function(e) {
-          if (e.key === "Enter" || e.keyCode === 13) handleUnlock();
-        });
-      }
-
-      // 導覽選單點擊
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-          const tab = this.getAttribute("data-tab");
-          if (tab) switchTab(tab);
-        });
-      });
-
-      // 開場按鈕
-      const btnOpen = document.getElementById("btnOpenSession");
-      if (btnOpen) btnOpen.addEventListener("click", openStartModal);
-      const btnCloseM = document.getElementById("btnCloseModal");
-      if (btnCloseM) btnCloseM.addEventListener("click", closeStartModal);
-      const btnCancelM = document.getElementById("btnCancelModal");
-      if (btnCancelM) btnCancelM.addEventListener("click", closeStartModal);
-      const btnConfirmS = document.getElementById("btnConfirmStart");
-      if (btnConfirmS) btnConfirmS.addEventListener("click", confirmStart);
-
-      // 結算與取消
-      const dongInp = document.getElementById("inputDongPool");
-      if (dongInp) dongInp.addEventListener("input", checkBalance);
-      const btnSubmit = document.getElementById("btnSubmitSettle");
-      if (btnSubmit) btnSubmit.addEventListener("click", submitSettlement);
-      const btnCancel = document.getElementById("btnCancelSettle");
-      if (btnCancel) btnCancel.addEventListener("click", cancelSession);
-
-      // 新增選手
-      const btnAdd = document.getElementById("btnAddPlayer");
-      if (btnAdd) {
-        btnAdd.addEventListener("click", function() {
-          const inp = document.getElementById("newPlayerName");
-          const name = inp ? inp.value.trim() : "";
-          if (!name) { alert("請輸入選手姓名！"); return; }
-          if (!DB.roster) DB.roster = [];
-          if (DB.roster.includes(name)) { alert("此選手名稱已存在！"); return; }
-
-          DB.roster.push(name);
-          if (!DB.playerStats) DB.playerStats = {};
-          DB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-          
-          if (inp) inp.value = "";
-          renderAll();
-          saveDB();
-          alert(`成功新增選手：${name}！已同步至名單。`);
-        });
-      }
-
-      // 載入 Firebase (異步安全連接)
-      setTimeout(function() {
-        try {
-          if (typeof firebase !== "undefined" && firebase.initializeApp) {
-            if (!firebase.apps || firebase.apps.length === 0) {
-              firebase.initializeApp({
-                apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
-                authDomain: "beebee-mj.firebaseapp.com",
-                databaseURL: "https://beebee-mj-default-rtdb.asia-southeast1.firebasedatabase.app",
-                projectId: "beebee-mj",
-                storageBucket: "beebee-mj.firebasestorage.app",
-                messagingSenderId: "455969527844",
-                appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
-              });
-            }
-            window.firebaseDBRef = firebase.database().ref("league_data");
-            window.firebaseDBRef.on("value", function(snapshot) {
-              const val = snapshot.val();
-              if (val && val.version >= 30) {
-                DB = val;
-                localStorage.setItem(LOCAL_KEY, JSON.stringify(DB));
-                renderAll();
-              } else {
-                saveDB();
-              }
-            });
-          }
-        } catch(e) {}
-      }, 500);
+    sorted.forEach((p, idx) => {
+      let color = p.totalScore > 0 ? "var(--win)" : (p.totalScore < 0 ? "var(--lose)" : "var(--text-muted)");
+      tbody.innerHTML += `
+        <tr>
+          <td style="color:var(--gold); font-weight:bold;">#${idx+1}</td>
+          <td style="font-weight: bold; text-align: left;">${p.name}</td>
+          <td class="highlight-cell" style="color: ${color}; font-size: 14px;">${p.totalScore > 0 ? '+' + p.totalScore : p.totalScore}</td>
+          <td>${p.sessionsPlayed}</td>
+          <td>${p.matchesPlayed}</td>
+          <td style="color:var(--gold); font-weight:bold;">${p.winRate}</td>
+        </tr>
+      `;
     });
-  })();
+  }
+
+  function renderArchivedSessions() {
+    const container = document.getElementById("archivedSessionsContainer");
+    const sessions = DB.archivedSessions || [];
+    document.getElementById("totalSessionsArchived").innerText = `共 ${sessions.length} 場`;
+
+    if (sessions.length === 0) {
+      container.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">尚無已封存場次</div>`;
+      return;
+    }
+
+    container.innerHTML = sessions.map((sess, sIdx) => {
+      const resultsHtml = (sess.results || []).map(r => {
+        const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
+        return `<span>${r.name}: <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b> <small style="color:var(--text-muted);">(${r.matchesPlayed}將)</small></span>`;
+      }).join(" ｜ ");
+
+      const dongBadge = (sess.totalDong > 0) ? `<span style="color:var(--gold); font-size:12px; margin-left:8px;">(東哥 +${sess.totalDong})</span>` : '';
+
+      return `
+        <div class="session-archive-card">
+          <div class="session-archive-header">
+            <div>
+              <b style="color:#fff;">📁 ${sess.name}</b>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 實際總打 ${sess.actualMatches || 1} 將)</span>
+              ${dongBadge}
+            </div>
+            <button class="btn-action-alt btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
+          </div>
+          <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
+            ${resultsHtml} ${sess.totalDong > 0 ? `<br><span style="color:var(--gold); font-size:12px;">💰 東哥：+${sess.totalDong} 點 (🛠️硬體+${sess.dongHardware\vert{}\vert{}0} ｜ 👑純益+${sess.dongProfit||0})</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function deleteArchivedSession(sIdx) {
+    if (!confirm("確定刪除此場次紀錄？所有選手積分、將數與金庫將連帶扣除回滾！")) return;
+    const sess = DB.archivedSessions[sIdx];
+
+    (sess.results || []).forEach(r => {
+      if (DB.playerStats[r.name]) {
+        DB.playerStats[r.name].totalScore -= r.finalScore;
+        DB.playerStats[r.name].sessionsPlayed = Math.max(0, DB.playerStats[r.name].sessionsPlayed - 1);
+        DB.playerStats[r.name].matchesPlayed = Math.max(0, DB.playerStats[r.name].matchesPlayed - r.matchesPlayed);
+        if (r.finalScore > 0) DB.playerStats[r.name].winsCount = Math.max(0, DB.playerStats[r.name].winsCount - 1);
+      }
+    });
+
+    if (sess.totalDong > 0 && DB.vault) {
+      DB.vault.totalHardwarePaid = Math.max(0, (DB.vault.totalHardwarePaid || 0) - (sess.dongHardware || 0));
+      DB.vault.totalDongProfit = Math.max(0, (DB.vault.totalDongProfit || 0) - (sess.dongProfit || 0));
+      DB.vault.logs = (DB.vault.logs || []).filter(l => l.sessionName !== sess.name);
+    }
+
+    DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - (sess.actualMatches || 1));
+    DB.archivedSessions.splice(sIdx, 1);
+
+    renderAllLocal();
+    saveDBToCloud();
+  }
+
+  function renderRosterView() {
+    const container = document.getElementById("rosterListContainer");
+    document.getElementById("rosterCountBadge").innerText = `共 ${(DB.roster || []).length} 位`;
+    container.innerHTML = "";
+
+    (DB.roster || []).forEach(name => {
+      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
+      container.innerHTML += `
+        <div class="roster-item">
+          <div>
+            <div style="font-weight: bold; font-size: 15px;">${name}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              出賽: <b style="color:var(--gold);">${stats.sessionsPlayed}</b> 場 ｜ 總分: <b>${stats.totalScore}</b>
+            </div>
+          </div>
+          <div class="roster-actions">
+            <button class="btn-sm btn-edit" onclick="editPlayerName('${name}')">✏️ 改名</button>
+            <button class="btn-sm btn-del" onclick="deletePlayer('${name}')">🗑️ 刪除</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function addNewPlayer() {
+    const input = document.getElementById("newPlayerNameInput");
+    const name = input.value.trim();
+    if (!name) { alert("請輸入選手姓名！"); return; }
+    if (!DB.roster) DB.roster = [];
+    if (DB.roster.includes(name)) { alert("此選手名稱已存在！"); return; }
+
+    DB.roster.push(name);
+    if (!DB.playerStats) DB.playerStats = {};
+    DB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    
+    input.value = "";
+    renderAllLocal();
+    saveDBToCloud();
+    alert(`成功新增選手：${name}！已同步至各名冊。`);
+  }
+
+  function editPlayerName(oldName) {
+    const newName = prompt(`請輸入選手【${oldName}】的新名稱：`, oldName);
+    if (!newName || newName.trim() === "" || newName.trim() === oldName) return;
+    const cleanName = newName.trim();
+    if (DB.roster.includes(cleanName)) return;
+
+    const rIdx = DB.roster.indexOf(oldName);
+    if (rIdx !== -1) DB.roster[rIdx] = cleanName;
+    DB.playerStats[cleanName] = DB.playerStats[oldName];
+    delete DB.playerStats[oldName];
+
+    if (DB.currentSession && DB.currentSession.players) {
+      DB.currentSession.players = DB.currentSession.players.map(s => s === oldName ? cleanName : s);
+    }
+
+    (DB.archivedSessions || []).forEach(sess => {
+      (sess.results || []).forEach(r => {
+        if (r.name === oldName) r.name = cleanName;
+      });
+    });
+    renderAllLocal();
+    saveDBToCloud();
+  }
+
+  function deletePlayer(name) {
+    if (DB.roster.length <= 4 || (DB.currentSession && DB.currentSession.players.includes(name))) {
+      alert("選手不足 4 人或正在出賽中，無法刪除！");
+      return;
+    }
+    if (!confirm(`確定刪除選手【${name}】？`)) return;
+    DB.roster = DB.roster.filter(n => n !== name);
+    delete DB.playerStats[name];
+    renderAllLocal();
+    saveDBToCloud();
+  }
+
+  document.addEventListener("DOMContentLoaded", checkPassword);
 </script>
 </body>
 </html>
