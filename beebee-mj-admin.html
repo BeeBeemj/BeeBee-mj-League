@@ -27,9 +27,9 @@
       padding: 10px;
       min-height: 100vh;
     }
-    .container { max-width: 720px; margin: 0 auto; }
+    .container { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
     
-    /* 密碼防護層 */
+    /* 密碼防護層：解鎖後設為 display:none 徹底釋放點擊事件 */
     #lockScreen {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -55,6 +55,7 @@
     .tab-btn {
       padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
       border-radius: 8px; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
+      user-select: none;
     }
     .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #0b1120; }
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -90,7 +91,7 @@
     .modal-header { font-size: 16px; font-weight: bold; margin-bottom: 14px; display: flex; justify-content: space-between; }
 
     .roster-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid var(--card-border); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
-    .btn-sm { padding: 4px 8px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; }
+    .btn-sm { padding: 6px 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; }
     .btn-del { background: #b91c1c; color: #fff; border-color: #991b1b; }
     .btn-edit { background: #0284c7; color: #fff; border-color: #0369a1; }
 
@@ -102,17 +103,42 @@
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
   </style>
 
-  <!-- 關鍵優先腳本：保證驗證按鈕立即可用，不依賴外部連線 -->
+  <!-- 載入 Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <!-- 核心認證邏輯：使用 localStorage 永久保持登入 -->
   <script>
     const ADMIN_PASSWORD = "3333";
-    
+    const AUTH_KEY = "BEEBEE_ADMIN_PERM_AUTH";
+
+    function checkAuth() {
+      if (localStorage.getItem(AUTH_KEY) === "true") {
+        hideLockScreen();
+      } else {
+        showLockScreen();
+      }
+    }
+
+    function showLockScreen() {
+      const lock = document.getElementById("lockScreen");
+      if (lock) lock.style.display = "flex";
+    }
+
+    function hideLockScreen() {
+      const lock = document.getElementById("lockScreen");
+      if (lock) {
+        lock.style.display = "none";
+        lock.style.pointerEvents = "none"; // 徹底消除觸控阻擋
+      }
+    }
+
     function verifyPassword() {
       const inputEl = document.getElementById("inputAdminPassword");
       const pwd = inputEl ? inputEl.value.trim() : "";
       if (pwd === ADMIN_PASSWORD) {
-        sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
-        const lock = document.getElementById("lockScreen");
-        if (lock) lock.style.display = "none";
+        localStorage.setItem(AUTH_KEY, "true"); // 永久記住
+        hideLockScreen();
         if (typeof initAppPipeline === "function") {
           initAppPipeline();
         }
@@ -131,7 +157,7 @@
 </head>
 <body>
 
-<!-- 密碼解鎖層 -->
+<!-- 密碼解鎖層 (登入過後徹底消失，不再阻擋點擊) -->
 <div id="lockScreen">
   <div class="lock-box">
     <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
@@ -141,7 +167,7 @@
   </div>
 </div>
 
-<!-- 主介面 -->
+<!-- 主介面容器 -->
 <div class="container" id="adminApp">
   <div class="tab-bar">
     <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
@@ -402,7 +428,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 26,
+      version: 27,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -435,7 +461,7 @@
         dbRef.on("value", snapshot => {
           try {
             const val = snapshot.val();
-            if (val && val.version >= 26) {
+            if (val && val.version >= 27) {
               DB = val;
               localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
               renderAllLocal();
@@ -965,7 +991,7 @@
     container.innerHTML = "";
 
     (DB.roster || []).forEach(name => {
-      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
+      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
       container.innerHTML += `
         <div class="roster-item">
           <div>
@@ -1036,10 +1062,14 @@
     saveDBToCloud();
   }
 
-  // 頁面載入安全掛載
+  // 頁面就緒檢核
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAppPipeline);
+    document.addEventListener("DOMContentLoaded", () => {
+      checkAuth();
+      initAppPipeline();
+    });
   } else {
+    checkAuth();
     initAppPipeline();
   }
 </script>
