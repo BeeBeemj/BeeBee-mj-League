@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BeeBee 麻將聯賽 - 後台系統</title>
-  <!-- 載入 Firebase SDK (加入 defer 防止阻塞) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  
   <style>
     :root {
       --bg: #0b1120;
@@ -31,11 +29,11 @@
     }
     .container { max-width: 720px; margin: 0 auto; }
     
-    /* 密碼防護覆蓋層 (有密碼才擋，驗證過自動隱藏) */
+    /* 密碼防護層 */
     #lockScreen {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(11, 17, 32, 0.96);
+      background: rgba(11, 17, 32, 0.98);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -103,20 +101,47 @@
     .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
   </style>
+
+  <!-- 關鍵優先腳本：保證驗證按鈕立即可用，不依賴外部連線 -->
+  <script>
+    const ADMIN_PASSWORD = "3333";
+    
+    function verifyPassword() {
+      const inputEl = document.getElementById("inputAdminPassword");
+      const pwd = inputEl ? inputEl.value.trim() : "";
+      if (pwd === ADMIN_PASSWORD) {
+        sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
+        const lock = document.getElementById("lockScreen");
+        if (lock) lock.style.display = "none";
+        if (typeof initAppPipeline === "function") {
+          initAppPipeline();
+        }
+      } else {
+        alert("密碼錯誤，請重新輸入！");
+        if (inputEl) inputEl.value = "";
+      }
+    }
+
+    function handlePwdKey(e) {
+      if (e.key === "Enter" || e.keyCode === 13) {
+        verifyPassword();
+      }
+    }
+  </script>
 </head>
 <body>
 
-<!-- 密碼解鎖層 (預設顯示，驗證通過立即隱藏，絕無白屏風險) -->
+<!-- 密碼解鎖層 -->
 <div id="lockScreen">
   <div class="lock-box">
     <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
     <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼以啟用操作</p>
-    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
-    <button class="btn-submit" style="width:100%;" onclick="verifyPassword()">解鎖登入</button>
+    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." onkeydown="handlePwdKey(event)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
+    <button type="button" class="btn-submit" style="width:100%; cursor:pointer;" onclick="verifyPassword()">解鎖登入</button>
   </div>
 </div>
 
-<!-- 主介面容器 (預設可見，不依賴 JS 切換 display) -->
+<!-- 主介面 -->
 <div class="container" id="adminApp">
   <div class="tab-bar">
     <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
@@ -367,10 +392,8 @@
     messagingSenderId: "455969527844",
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
-  const ADMIN_PASSWORD = "3333";
   const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_FINAL_STABLE";
   const HARDWARE_TARGET = 1800;
-
   const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
 
   function createCleanDB() {
@@ -379,7 +402,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 25,
+      version: 26,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -394,31 +417,7 @@
   let viewingPlayerDetailName = null;
   let dbRef = null;
 
-  // 1. 密碼驗證邏輯 (若已登入直接隱藏遮罩層)
-  function initAuthCheck() {
-    if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
-      document.getElementById("lockScreen").style.display = "none";
-    } else {
-      document.getElementById("lockScreen").style.display = "flex";
-    }
-  }
-
-  function verifyPassword() {
-    const pwd = document.getElementById("inputAdminPassword").value;
-    if (pwd === ADMIN_PASSWORD) {
-      sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
-      document.getElementById("lockScreen").style.display = "none";
-    } else {
-      alert("密碼錯誤，請重新輸入！");
-      document.getElementById("inputAdminPassword").value = "";
-    }
-  }
-
-  // 2. 本地管線先跑，即使無網路也保證畫面可見
-  function initApp() {
-    initAuthCheck();
-
-    // 先讀快取
+  function initAppPipeline() {
     const local = localStorage.getItem(LOCAL_CACHE_KEY);
     if (local) {
       try {
@@ -427,15 +426,16 @@
     }
     renderAllLocal();
 
-    // 初始化 Firebase
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps || firebase.apps.length === 0) {
+          firebase.initializeApp(firebaseConfig);
+        }
         dbRef = firebase.database().ref("league_data");
         dbRef.on("value", snapshot => {
           try {
             const val = snapshot.val();
-            if (val && val.version >= 25) {
+            if (val && val.version >= 26) {
               DB = val;
               localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
               renderAllLocal();
@@ -443,19 +443,19 @@
               saveDBToCloud();
             }
           } catch(e) {
-            console.error("Firebase Snapshot 異常：", e);
+            console.error("Snapshot 解析異常：", e);
           }
         });
       }
     } catch(err) {
-      console.warn("Firebase 連線初始化受限，已啟用本機離線安全模式：", err);
+      console.warn("啟用離線本機模式：", err);
     }
   }
 
   function saveDBToCloud() {
     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
     if (dbRef) {
-      dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
+      dbRef.set(DB).catch(err => console.error("雲端同步失敗", err));
     }
   }
 
@@ -622,7 +622,6 @@
 
     const dongEl = document.getElementById("inputDongPoolScore");
     const dongPool = (isHome && dongEl) ? (parseInt(dongEl.value) || 0) : 0;
-    
     const totalBalance = sum + dongPool;
 
     const displayEl = document.getElementById("checkSumDisplay");
@@ -966,7 +965,7 @@
     container.innerHTML = "";
 
     (DB.roster || []).forEach(name => {
-      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
+      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
       container.innerHTML += `
         <div class="roster-item">
           <div>
@@ -1037,8 +1036,12 @@
     saveDBToCloud();
   }
 
-  // 頁面就緒立即啟動
-  window.addEventListener("DOMContentLoaded", initApp);
+  // 頁面載入安全掛載
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAppPipeline);
+  } else {
+    initAppPipeline();
+  }
 </script>
 </body>
 </html>
