@@ -61,16 +61,6 @@
     table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .highlight-cell { font-weight: bold; font-family: monospace; }
 
-    /* 硬體進度條 */
-    .progress-track {
-      width: 100%; height: 16px; background: #0f172a; border-radius: 8px;
-      overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0;
-    }
-    .progress-fill {
-      height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e);
-      width: 0%; transition: width 0.4s ease;
-    }
-
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 999; }
     .modal-overlay.active { display: flex; }
     .modal { background: #1e293b; border: 1px solid var(--card-border); border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 18px; }
@@ -80,10 +70,15 @@
     .btn-sm { padding: 4px 8px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; }
     .btn-del { background: #b91c1c; color: #fff; border-color: #991b1b; }
     .btn-edit { background: #0284c7; color: #fff; border-color: #0369a1; }
+    .btn-toggle-vis { background: #334155; color: #fff; border-color: #475569; }
+    .btn-toggle-vis.visible { background: #065f46; color: #a7f3d0; border-color: #059669; }
 
     .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
     .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
     .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
+
+    .progress-bar-bg { width: 100%; height: 12px; background: #0f172a; border-radius: 6px; overflow: hidden; margin: 6px 0; border: 1px solid var(--card-border); }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -117,47 +112,60 @@
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
         
-        <!-- 場次實際總將數獨立設定 -->
-        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <b style="color:var(--gold); font-size:14px;">🀄 本場牌桌實際進行總將數：</b>
-            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替打3將，此處填3；下方各人各填打2將)</span>
+            <b style="color:#fff; font-size:14px;">🏁 該場總將數 (全場共打幾將)：</b>
+            <span style="font-size:11px; color:var(--text-muted); display:block;">(紀錄於歷史戰報與總將數，個人出賽將數由下方獨立填寫)</span>
           </div>
-          <input type="number" id="inputSessionActualTotalMatches" value="3" min="1" max="50" class="settle-input">
+          <input type="number" id="inputSessionTotalMatches" value="3" min="1" max="30" class="settle-input" style="width:75px;">
         </div>
 
         <p style="font-size:12px; color:var(--text-muted); margin-top:0;">
-          請輸入各出賽選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及個人實際出賽將數：
+          請輸入各出賽選手手頭最終籌碼淨勝分 (贏正、輸負) 及個人出賽將數：
         </p>
 
         <table class="settle-table">
           <thead>
             <tr>
               <th>出賽選手</th>
-              <th>個人出賽將數</th>
+              <th>個人將數</th>
               <th>籌碼淨勝分</th>
             </tr>
           </thead>
           <tbody id="settleInputRows"></tbody>
         </table>
 
-        <!-- 東哥獨立輸入欄位 (含 50/50 攤提提示) -->
+        <!-- 東哥與硬體分帳輸入區 (自由數值輸入) -->
         <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div>
-              <b style="color:var(--gold); font-size:14px;">💰 東哥 (今日東池總收入)：</b>
-              <span id="dongSplitPreviewText" style="font-size:11px; color:#38bdf8; display:block; margin-top:2px;">
-                50% 撥入硬體回本池 ｜ 50% 撥入東哥純益
-              </span>
+              <b style="color:var(--gold); font-size:14px;">💰 今日東錢池總實收：</b>
+              <span style="font-size:11px; color:var(--text-muted); display:block;">(東錢獨立入帳，不計入選手個人打牌勝負)</span>
             </div>
-            <input type="number" id="inputDongPoolScore" value="0" min="0" step="20" class="settle-input" oninput="checkSumBalance()">
+            <input type="number" id="inputDongPoolScore" value="0" min="0" class="settle-input" oninput="handleDongInputAutoSplit()">
+          </div>
+
+          <div style="background:#1e293b; padding:10px; border-radius:6px; border:1px dashed #475569;">
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">
+              <b>東錢分配試算</b>（硬體上限 1800 分，未滿前五五拆帳，滿額後全歸東哥）：
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <div>
+                <label style="font-size:11px; color:var(--primary);">🛠️ 撥入硬體成本：</label>
+                <input type="number" id="splitHardwareInput" value="0" min="0" class="settle-input" style="width:100%;" oninput="checkSumBalance()">
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--gold);">👑 撥入東哥水錢：</label>
+                <input type="number" id="splitDongInput" value="0" min="0" class="settle-input" style="width:100%;" oninput="checkSumBalance()">
+              </div>
+            </div>
+            <div id="hardwareQuotaHint" style="font-size:11px; color:#cbd5e1; margin-top:6px;"></div>
           </div>
         </div>
 
-        <!-- 籌碼平衡檢核 -->
         <div style="margin-top:14px; padding:10px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <span style="font-size:12px; color:var(--text-muted);">含東哥全場合計：</span>
+            <span style="font-size:12px; color:var(--text-muted);">全場合計平衡：</span>
             <b id="checkSumDisplay" style="font-size:18px; font-family:monospace;">0</b>
           </div>
           <span id="checkSumBadge" style="font-size:12px; font-weight:bold; color:var(--win);">✅ 完美平衡 (總和為 0)</span>
@@ -171,43 +179,42 @@
     </div>
   </div>
 
-  <!-- 頁面 2：東哥金庫 (含硬體回本 1800 點進度與分帳) -->
+  <!-- 頁面 2：東哥金庫 -->
   <div id="pageVault" style="display: none;">
     <div class="card" style="background:linear-gradient(135deg, #1e1b4b, #0f172a); border-color:#6366f1;">
       <div class="card-title">
-        <span style="color:#fff;">🛠️ 桌椅硬體開銷回本進度 (目標 1,800 點 / 36,000 元)</span>
-        <span id="hardwareStatusBadge" style="font-size:14px; font-weight:900; color:var(--gold);">0 / 1800 點</span>
+        <span style="color:#fff;">👑 東哥金庫與硬體基金</span>
+        <button class="btn-sm btn-edit" onclick="openManualAdjustVaultModal()">🛠️ 校正金庫數據</button>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="hardwareProgressBar"></div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:8px 0 12px 0;">
+        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155;">
+          <span style="font-size:12px; color:var(--text-muted); display:block;">東哥私房水錢</span>
+          <b id="vaultDongTotalDisplay" style="font-size:22px; color:var(--gold); font-family:monospace;">0 點</b>
+        </div>
+        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155;">
+          <span style="font-size:12px; color:var(--text-muted); display:block;">硬體攤提基金</span>
+          <b id="vaultHardwareTotalDisplay" style="font-size:22px; color:var(--primary); font-family:monospace;">0 / 1800 點</b>
+        </div>
       </div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:#cbd5e1;">
-        <span id="hardwareProgressText">已回本：0 點 (0.0%)</span>
-        <span id="hardwareRemainText">尚差：1800 點</span>
+
+      <div style="font-size:12px; color:#cbd5e1; display:flex; justify-content:space-between;">
+        <span>硬體成本累積進度 (上限 1800 點)：</span>
+        <span id="hardwareProgressText" style="font-weight:bold; color:var(--primary);">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="hardwareProgressBar" style="width: 0%;"></div>
+      </div>
+      <div id="hardwareDoneBadge" style="display:none; font-size:12px; font-weight:bold; color:var(--win); margin-top:4px;">
+        🎉 硬體成本已滿 1800 點！此後所有東錢 100% 全數歸入東哥水錢。
       </div>
     </div>
 
     <div class="card">
       <div class="card-title">
-        <span>💰 金庫資產總覽</span>
+        <span>📜 歷場東錢分配明細紀錄</span>
       </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border); text-align:center;">
-          <span style="font-size:12px; color:var(--text-muted);">🛠️ 硬體攤提累計回本</span>
-          <b id="vaultHardwarePaidTotal" style="display:block; font-size:20px; color:var(--primary); font-family:monospace; margin-top:4px;">0 點</b>
-        </div>
-        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border); text-align:center;">
-          <span style="font-size:12px; color:var(--text-muted);">👑 東哥純收益總庫存</span>
-          <b id="vaultDongProfitTotal" style="display:block; font-size:20px; color:var(--gold); font-family:monospace; margin-top:4px;">0 點</b>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
-        <span>📜 歷場東錢拆分收益明細表</span>
-      </div>
-      <div id="vaultHistoryContainer" style="max-height:360px; overflow-y:auto;"></div>
+      <div id="vaultHistoryContainer" style="max-height:400px; overflow-y:auto;"></div>
     </div>
   </div>
 
@@ -259,7 +266,7 @@
               <th>選手</th>
               <th>總積分</th>
               <th>出賽場數</th>
-              <th>出賽總將數</th>
+              <th>個人總將數</th>
               <th>場勝率</th>
             </tr>
           </thead>
@@ -273,14 +280,14 @@
   <div id="pageHistory" style="display: none;">
     <div class="card">
       <div class="card-title">
-        <span>📜 歷場完賽戰報 (點擊場次展開查看)</span>
+        <span>📜 歷場完賽戰報 (可修改場次/刪除)</span>
         <span id="totalSessionsArchived" style="font-size: 12px; color: var(--gold);">共 0 場</span>
       </div>
       <div id="archivedSessionsContainer"></div>
     </div>
   </div>
 
-  <!-- 頁面 6：選手後台 -->
+  <!-- 頁面 6：選手後台 (含前台顯示開關) -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
@@ -291,15 +298,15 @@
     </div>
     <div class="card">
       <div class="card-title">
-        <span>👥 現役選手名單管理 (可修改或刪除)</span>
-        <span id="rosterCountBadge" style="font-size: 12px; color: var(--gold);">共 6 位</span>
+        <span>👥 現役選手名單管理 (可控制前台顯示/隱藏)</span>
+        <span id="rosterCountBadge" style="font-size: 12px; color: var(--gold);">共 14 位</span>
       </div>
       <div id="rosterListContainer"></div>
     </div>
   </div>
 </div>
 
-<!-- 開場彈窗 -->
+<!-- 彈窗 1：開啟新場次 -->
 <div class="modal-overlay" id="startSessionModal">
   <div class="modal">
     <div class="modal-header">
@@ -307,29 +314,102 @@
       <span style="cursor: pointer; font-size: 18px;" onclick="closeStartSessionModal()">✕</span>
     </div>
     <div class="form-row">
-      <label>📅 牌局日期 (可自由調整補記)：</label>
+      <label>📅 牌局日期：</label>
       <input type="date" id="modalSessionDateInput">
     </div>
     <div class="form-row">
       <label>場次名稱：</label>
       <input type="text" id="modalSessionNameInput">
     </div>
-    
     <div class="form-row" style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
       <label style="color:#fff; font-weight:bold; display:flex; align-items:center; cursor:pointer;">
         <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:20px; height:20px; margin-right:8px;">
-        🏠 在主場打牌 (計算東錢：50%攤提硬體 / 50%東哥)
+        🏠 在主場打牌 (計算東錢分帳)
       </label>
     </div>
-
     <div class="form-row">
-      <label style="font-weight:bold; color:#fff;">勾選今日到場打牌之選手 (4~8人)：</label>
+      <label style="font-weight:bold; color:#fff;">勾選今日到場打牌之選手：</label>
       <div id="modalRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px;"></div>
     </div>
-
     <div style="display: flex; gap: 8px; margin-top: 14px;">
       <button class="btn-submit" style="flex: 1;" onclick="confirmStartSession()">確認開場</button>
       <button class="btn-action-alt" style="width: 80px;" onclick="closeStartSessionModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 彈窗 2：編輯歷史場次 (支援東錢與硬體分拆調整) -->
+<div class="modal-overlay" id="editSessionModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>✏️ 修改歷場戰報與東哥紀錄</span>
+      <span style="cursor: pointer; font-size: 18px;" onclick="closeEditSessionModal()">✕</span>
+    </div>
+    <div class="form-row">
+      <label>場次名稱：</label>
+      <input type="text" id="editSessionNameInput">
+    </div>
+    <div class="form-row">
+      <label>日期標籤 (如 10/16)：</label>
+      <input type="text" id="editSessionDateInput">
+    </div>
+    <div class="form-row">
+      <label>🏁 該場總將數：</label>
+      <input type="number" id="editSessionTotalMatchesInput" min="1">
+    </div>
+
+    <!-- 東錢修改區 -->
+    <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5; margin-bottom:12px;">
+      <b style="color:var(--gold); font-size:13px; display:block; margin-bottom:6px;">💰 該場東錢分配修改：</b>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:11px; color:var(--gold);">東哥水錢：</label>
+          <input type="number" id="editDongPartInput" class="settle-input" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--primary);">硬體成本：</label>
+          <input type="number" id="editHardwarePartInput" class="settle-input" style="width:100%;">
+        </div>
+      </div>
+    </div>
+    
+    <label style="font-size:13px; color:var(--text-muted); margin-top:10px; display:block;">出賽選手成績修改：</label>
+    <table class="settle-table">
+      <thead>
+        <tr>
+          <th>選手</th>
+          <th>將數</th>
+          <th>淨勝分</th>
+        </tr>
+      </thead>
+      <tbody id="editSessionResultsTbody"></tbody>
+    </table>
+
+    <div style="display: flex; gap: 8px; margin-top: 14px;">
+      <button class="btn-submit" style="flex: 1;" onclick="saveEditedSession()">儲存覆寫修正</button>
+      <button class="btn-action-alt" style="width: 80px;" onclick="closeEditSessionModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 彈窗 3：手動校正金庫 -->
+<div class="modal-overlay" id="adjustVaultModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>🛠️ 手動校正東哥金庫與硬體基金</span>
+      <span style="cursor: pointer; font-size: 18px;" onclick="closeManualAdjustVaultModal()">✕</span>
+    </div>
+    <div class="form-row">
+      <label>東哥私房水錢累計 (點數)：</label>
+      <input type="number" id="manualVaultDongInput">
+    </div>
+    <div class="form-row">
+      <label>硬體成本累計 (上限 1800 點)：</label>
+      <input type="number" id="manualVaultHardwareInput" min="0" max="1800">
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 14px;">
+      <button class="btn-submit" style="flex: 1;" onclick="saveManualAdjustVault()">確認儲存</button>
+      <button class="btn-action-alt" style="width: 80px;" onclick="closeManualAdjustVaultModal()">取消</button>
     </div>
   </div>
 </div>
@@ -345,28 +425,35 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V23_HARDWARE";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V25_ROSTER_UPDATE";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
 
-  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
-  const HARDWARE_GOAL = 1800; // 36000元 / 20點 = 1800點
+  // 更新預設 14 位選手名單
+  const DEFAULT_ROSTER = [
+    "胖弟", "大雄", "安妮", "公公", "鴨鴨", "翔哥", "中雯", 
+    "酒空馨", "于兄", "阿康", "JG", "學長", "萱", "Doggy"
+  ];
 
   function createCleanDB() {
     const stats = {};
+    const visibility = {};
     DEFAULT_ROSTER.forEach(name => {
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+      visibility[name] = true; // 預設全部顯示在前台
     });
     return {
-      version: 23,
+      version: 25,
       roster: [...DEFAULT_ROSTER],
+      playerVisibility: visibility,
       currentSession: null,
       totalLeagueMatches: 0,
       playerStats: stats,
       vault: {
-        totalHardwarePaid: 0, // 已回本硬體點數 (上限 1800)
-        totalDongProfit: 0,   // 東哥純益點數
+        totalDong: 0,
+        totalHardware: 0,
+        hardwareLimit: 1800,
         logs: []
       },
       archivedSessions: []
@@ -375,6 +462,7 @@
 
   let DB = createCleanDB();
   let viewingPlayerDetailName = null;
+  let currentlyEditingSessionIndex = null;
 
   function checkPassword() {
     if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
@@ -407,8 +495,12 @@
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
-      if (val && val.version >= 23) {
+      if (val && val.version >= 25) {
         DB = val;
+        if (!DB.playerVisibility) DB.playerVisibility = {};
+        (DB.roster || DEFAULT_ROSTER).forEach(name => {
+          if (DB.playerVisibility[name] === undefined) DB.playerVisibility[name] = true;
+        });
         localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
         renderAllLocal();
       } else {
@@ -459,7 +551,7 @@
     const container = document.getElementById("modalRosterCheckboxes");
     container.innerHTML = (DB.roster || DEFAULT_ROSTER).map(name => `
       <label style="display:flex; align-items:center; background:#1e293b; padding:8px; border-radius:6px; cursor:pointer;">
-        <input type="checkbox" value="${name}" class="roster-chk" checked style="width:18px; height:18px; margin-right:6px;">
+        <input type="checkbox" value="${name}" class="roster-chk"  style="width:18px; height:18px; margin-right:6px;">
         ${name}
       </label>
     `).join("");
@@ -472,7 +564,7 @@
   }
 
   function confirmStartSession() {
-    const rawDate = document.getElementById("modalSessionDateInput").value;
+    const rawDate = document.getElementById("modalSessionDateInput").value || "";
     let displayDate = "";
     if (rawDate) {
       const parts = rawDate.split("-");
@@ -495,7 +587,7 @@
       id: "SESSION_" + Date.now(),
       name: name,
       date: displayDate,
-      fullDate: rawDate,
+      fullDate: rawDate || displayDate,
       isHome: isHome,
       players: checkedPlayers
     };
@@ -547,32 +639,49 @@
     document.getElementById("homeTagBadge").innerText = isHome ? "🏠 主場 (計東)" : "🚗 外場 (免東)";
     document.getElementById("dongInputBlock").style.display = isHome ? "block" : "none";
 
-    // 提示目前硬體是否已滿
-    const curHw = DB.vault ? (DB.vault.totalHardwarePaid || 0) : 0;
-    const isHwFulfilled = curHw >= HARDWARE_GOAL;
-    const splitTextEl = document.getElementById("dongSplitPreviewText");
-    if (splitTextEl) {
-      if (isHwFulfilled) {
-        splitTextEl.innerText = "🎉 硬體成本已滿額回本！東錢 100% 全額歸入東哥純益";
-        splitTextEl.style.color = "var(--gold)";
-      } else {
-        splitTextEl.innerText = `尚未滿額 (目前已攤提 ${curHw}/${HARDWARE_GOAL})：50% 撥入硬體回本池 ｜ 50% 撥入東哥純益`;
-        splitTextEl.style.color = "#38bdf8";
-      }
-    }
-
     const tbody = document.getElementById("settleInputRows");
     tbody.innerHTML = (DB.currentSession.players || []).map(name => `
       <tr>
         <td style="font-weight:bold; font-size:14px; text-align:left;">${name}</td>
         <td>
-          <input type="number" min="1" max="20" value="2" class="settle-input input-matches" id="matches-${name}">
+          <input type="number" min="1" max="20" value="3" class="settle-input input-matches" id="matches-${name}">
         </td>
         <td>
-          <input type="number" step="10" value="0" class="settle-input input-score" id="score-${name}" oninput="checkSumBalance()">
+          <input type="number" value="0" class="settle-input input-score" id="score-${name}" oninput="checkSumBalance()">
         </td>
       </tr>
     `).join("");
+
+    handleDongInputAutoSplit();
+  }
+
+  function handleDongInputAutoSplit() {
+    const totalDong = parseInt(document.getElementById("inputDongPoolScore").value) || 0;
+    const currentHardware = (DB.vault && DB.vault.totalHardware) ? DB.vault.totalHardware : 0;
+    const limit = (DB.vault && DB.vault.hardwareLimit) ? DB.vault.hardwareLimit : 1800;
+    const remainingQuota = Math.max(0, limit - currentHardware);
+
+    let hardwarePart = 0;
+    let dongPart = 0;
+
+    if (remainingQuota <= 0) {
+      hardwarePart = 0;
+      dongPart = totalDong;
+    } else {
+      const half = Math.floor(totalDong / 2);
+      hardwarePart = Math.min(remainingQuota, half);
+      dongPart = totalDong - hardwarePart;
+    }
+
+    document.getElementById("splitHardwareInput").value = hardwarePart;
+    document.getElementById("splitDongInput").value = dongPart;
+
+    const hintEl = document.getElementById("hardwareQuotaHint");
+    if (remainingQuota <= 0) {
+      hintEl.innerHTML = `<span style="color:var(--win); font-weight:bold;">✅ 硬體成本已滿 1800 點！本次東錢 100% 歸東哥。</span>`;
+    } else {
+      hintEl.innerHTML = `目前硬體累計：<b>${currentHardware}</b> / 1800 點 (尚餘 <b>${remainingQuota}</b> 點額度可分攤)`;
+    }
 
     checkSumBalance();
   }
@@ -587,10 +696,11 @@
       sum += inputEl ? (parseInt(inputEl.value) || 0) : 0;
     });
 
-    const dongEl = document.getElementById("inputDongPoolScore");
-    const dongPool = (isHome && dongEl) ? (parseInt(dongEl.value) || 0) : 0;
+    const hw = isHome ? (parseInt(document.getElementById("splitHardwareInput").value) || 0) : 0;
+    const dg = isHome ? (parseInt(document.getElementById("splitDongInput").value) || 0) : 0;
+    const totalDong = hw + dg;
     
-    const totalBalance = sum + dongPool;
+    const totalBalance = sum + totalDong;
 
     const displayEl = document.getElementById("checkSumDisplay");
     const badgeEl = document.getElementById("checkSumBadge");
@@ -598,7 +708,7 @@
 
     if (totalBalance === 0) {
       displayEl.style.color = "var(--win)";
-      badgeEl.innerText = "✅ 完美平衡 (選手+東哥 總和為 0)";
+      badgeEl.innerText = "✅ 完美平衡 (選手+東錢 總和為 0)";
       badgeEl.style.color = "var(--win)";
     } else {
       displayEl.style.color = "var(--lose)";
@@ -609,127 +719,107 @@
     return totalBalance;
   }
 
-  // 完成本場結算 (分離場次將數、個人將數，並拆分 50/50 東錢)
   function submitSessionSettlement() {
-    if (!DB.currentSession) return;
-    const diff = checkSumBalance();
-    if (diff !== 0) {
-      if (!confirm(`含東哥在內，全場籌碼合計尚有差額 ${diff} 點，確定要強制結算嗎？`)) return;
-    }
+    try {
+      if (!DB.currentSession) return;
+      const diff = checkSumBalance();
+      if (diff !== 0) {
+        if (!confirm(`全場籌碼合計尚有差額 ${diff} 點，確定要強制結算嗎？`)) return;
+      }
 
-    const isHome = DB.currentSession.isHome !== false;
-    const dongEl = document.getElementById("inputDongPoolScore");
-    const totalDong = isHome ? (parseInt(dongEl.value) || 0) : 0;
+      const isHome = DB.currentSession.isHome !== false;
+      const hwPart = isHome ? (parseInt(document.getElementById("splitHardwareInput").value) || 0) : 0;
+      const dgPart = isHome ? (parseInt(document.getElementById("splitDongInput").value) || 0) : 0;
+      const totalDong = hwPart + dgPart;
 
-    // 1. 抓取牌桌實際進行總將數
-    const actualSessionTotalMatches = parseInt(document.getElementById("inputSessionActualTotalMatches").value) || 1;
+      const sessionTotalMatches = parseInt(document.getElementById("inputSessionTotalMatches").value) || 1;
 
-    // 2. 東錢 50/50 拆分計算 (目標 1800 點)
-    let allocatedToHardware = 0;
-    let allocatedToProfit = 0;
+      const sessionResults = [];
+      (DB.currentSession.players || []).forEach(name => {
+        const scEl = document.getElementById(`score-${name}`);
+        const mcEl = document.getElementById(`matches-${name}`);
+        const sc = scEl ? (parseInt(scEl.value) || 0) : 0;
+        const mc = mcEl ? (parseInt(mcEl.value) || 1) : 1;
 
-    if (isHome && totalDong > 0) {
-      if (!DB.vault) DB.vault = { totalHardwarePaid: 0, totalDongProfit: 0, logs: [] };
-      const currentHwPaid = DB.vault.totalHardwarePaid || 0;
-      const remainHw = Math.max(0, HARDWARE_GOAL - currentHwPaid);
+        sessionResults.push({
+          name: name,
+          finalScore: sc,
+          matchesPlayed: mc
+        });
+      });
 
-      if (remainHw <= 0) {
-        // 已全部回本 -> 100% 歸東哥純益
-        allocatedToHardware = 0;
-        allocatedToProfit = totalDong;
-      } else {
-        // 未滿 1800 點 -> 一半計硬體，一半計東哥
-        const half = Math.floor(totalDong / 2);
-        if (half <= remainHw) {
-          allocatedToHardware = half;
-          allocatedToProfit = totalDong - half;
-        } else {
-          // 本次一半超過剩餘硬體額度 -> 補滿 1800 點後，其餘全撥入東哥
-          allocatedToHardware = remainHw;
-          allocatedToProfit = totalDong - remainHw;
+      sessionResults.forEach(res => {
+        if (!DB.playerStats[res.name]) {
+          DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
         }
+        DB.playerStats[res.name].totalScore += res.finalScore;
+        DB.playerStats[res.name].sessionsPlayed += 1;
+        DB.playerStats[res.name].matchesPlayed += res.matchesPlayed;
+        if (res.finalScore > 0) DB.playerStats[res.name].winsCount += 1;
+      });
+
+      DB.totalLeagueMatches = (DB.totalLeagueMatches || 0) + sessionTotalMatches;
+
+      if (isHome && totalDong > 0) {
+        if (!DB.vault) DB.vault = { totalDong: 0, totalHardware: 0, hardwareLimit: 1800, logs: [] };
+        DB.vault.totalDong = (DB.vault.totalDong || 0) + dgPart;
+        DB.vault.totalHardware = Math.min(1800, (DB.vault.totalHardware || 0) + hwPart);
+        if (!DB.vault.logs) DB.vault.logs = [];
+        DB.vault.logs.unshift({
+          sessionName: DB.currentSession.name || "麻將聚會",
+          date: DB.currentSession.date || "",
+          totalDong: totalDong,
+          dongPart: dgPart,
+          hardwarePart: hwPart,
+          matches: sessionTotalMatches
+        });
       }
 
-      DB.vault.totalHardwarePaid += allocatedToHardware;
-      DB.vault.totalDongProfit += allocatedToProfit;
-      DB.vault.logs.unshift({
-        sessionName: DB.currentSession.name,
-        date: DB.currentSession.date,
+      if (!DB.archivedSessions) DB.archivedSessions = [];
+      DB.archivedSessions.unshift({
+        name: DB.currentSession.name || "麻將聚會",
+        date: DB.currentSession.date || "",
+        fullDate: DB.currentSession.fullDate || DB.currentSession.date || "",
+        isHome: isHome,
         totalDong: totalDong,
-        toHardware: allocatedToHardware,
-        toProfit: allocatedToProfit,
-        actualMatches: actualSessionTotalMatches
+        dongPart: dgPart,
+        hardwarePart: hwPart,
+        sessionTotalMatches: sessionTotalMatches,
+        results: sessionResults
       });
+
+      const finishedSessionName = DB.currentSession.name;
+      DB.currentSession = null;
+
+      renderAllLocal();
+      saveDBToCloud();
+
+      alert(`【${finishedSessionName}】已成功結算並歸檔至歷史戰報！`);
+      switchTab('history');
+    } catch (err) {
+      console.error("結算寫入失敗：", err);
+      alert("結算過程發生錯誤：" + err.message);
     }
-
-    // 3. 收集各選手個人戰績
-    const sessionResults = [];
-    (DB.currentSession.players || []).forEach(name => {
-      const sc = parseInt(document.getElementById(`score-${name}`).value) || 0;
-      const mc = parseInt(document.getElementById(`matches-${name}`).value) || 1; // 個人出賽將數
-
-      sessionResults.push({
-        name: name,
-        finalScore: sc,
-        matchesPlayed: mc
-      });
-    });
-
-    // 4. 更新選手生涯總榜
-    sessionResults.forEach(res => {
-      if (!DB.playerStats[res.name]) {
-        DB.playerStats[res.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-      }
-      DB.playerStats[res.name].totalScore += res.finalScore;
-      DB.playerStats[res.name].sessionsPlayed += 1;
-      DB.playerStats[res.name].matchesPlayed += res.matchesPlayed; // 只累計個人打的將數
-      if (res.finalScore > 0) DB.playerStats[res.name].winsCount += 1;
-    });
-
-    // 全聯賽總將數累加的是「牌桌實際總將數」
-    DB.totalLeagueMatches += actualSessionTotalMatches;
-
-    // 5. 歸檔場次歷史紀錄
-    if (!DB.archivedSessions) DB.archivedSessions = [];
-    DB.archivedSessions.unshift({
-      name: DB.currentSession.name,
-      date: DB.currentSession.date,
-      fullDate: DB.currentSession.fullDate,
-      isHome: isHome,
-      totalDong: totalDong,
-      dongHardware: allocatedToHardware,
-      dongProfit: allocatedToProfit,
-      actualMatches: actualSessionTotalMatches, // 本場實際打的將數
-      results: sessionResults
-    });
-
-    alert(`【${DB.currentSession.name}】已成功結算歸檔！\n本場共進行 ${actualSessionTotalMatches} 將。`);
-    DB.currentSession = null;
-    renderAllLocal();
-    saveDBToCloud();
-    switchTab('leaderboard');
   }
 
-  // --- 東哥金庫渲染 (回本進度條與紀錄) ---
   function renderVaultView() {
-    const vault = DB.vault || { totalHardwarePaid: 0, totalDongProfit: 0, logs: [] };
-    const hwPaid = vault.totalHardwarePaid || 0;
-    const dongProfit = vault.totalDongProfit || 0;
+    const vault = DB.vault || { totalDong: 0, totalHardware: 0, hardwareLimit: 1800, logs: [] };
+    const dongTotal = vault.totalDong || 0;
+    const hwTotal = vault.totalHardware || 0;
+    const hwLimit = vault.hardwareLimit || 1800;
 
-    document.getElementById("vaultHardwarePaidTotal").innerText = `${hwPaid} 點`;
-    document.getElementById("vaultDongProfitTotal").innerText = `${dongProfit} 點`;
+    document.getElementById("vaultDongTotalDisplay").innerText = `${dongTotal} 點`;
+    document.getElementById("vaultHardwareTotalDisplay").innerText = `${hwTotal} / ${hwLimit} 點`;
 
-    const pct = Math.min(100, ((hwPaid / HARDWARE_GOAL) * 100)).toFixed(1);
-    const remain = Math.max(0, HARDWARE_GOAL - hwPaid);
-
+    const pct = Math.min(100, (hwTotal / hwLimit) * 100).toFixed(1);
+    document.getElementById("hardwareProgressText").innerText = `${pct}%`;
     document.getElementById("hardwareProgressBar").style.width = `${pct}%`;
-    document.getElementById("hardwareStatusBadge").innerText = `${hwPaid} / ${HARDWARE_GOAL} 點 (${pct}%)`;
-    document.getElementById("hardwareProgressText").innerText = `已回本：${hwPaid} 點 (${pct}%) ｜ 折合約 NT$ ${hwPaid * 20}`;
-    document.getElementById("hardwareRemainText").innerText = remain > 0 ? `尚差：${remain} 點 (約 NT$ ${remain * 20})` : "🎉 已全額回本！";
+
+    document.getElementById("hardwareDoneBadge").style.display = (hwTotal >= hwLimit) ? "block" : "none";
 
     const container = document.getElementById("vaultHistoryContainer");
     if (!vault.logs || vault.logs.length === 0) {
-      container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">尚無東哥收入紀錄</div>`;
+      container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">尚無東錢收益紀錄</div>`;
       return;
     }
 
@@ -737,14 +827,38 @@
       <div style="background:#0f172a; border:1px solid var(--card-border); border-radius:8px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <b style="color:#fff;">${log.sessionName}</b>
-          <span style="font-size:12px; color:var(--text-muted); display:block;">${log.date} ｜ 實際總打 ${log.actualMatches} 將</span>
-          <span style="font-size:11px; color:#38bdf8; display:block; margin-top:2px;">
-            🛠️ 硬體攤提 +${log.toHardware || 0} 點 ｜ 👑 東哥純益 +${log.toProfit || 0} 點
+          <span style="font-size:12px; color:var(--text-muted); display:block;">
+            ${log.date} ｜ 總將數: ${log.matches} 將 ｜ 總東: +${log.totalDong}
           </span>
         </div>
-        <span style="color:var(--gold); font-size:16px; font-weight:900; font-family:monospace;">+${log.totalDong} 點</span>
+        <div style="text-align:right;">
+          <span style="color:var(--gold); font-size:14px; font-weight:bold; display:block;">東哥: +${log.dongPart || 0}</span>
+          <span style="color:var(--primary); font-size:12px;">硬體: +${log.hardwarePart || 0}</span>
+        </div>
       </div>
     `).join("");
+  }
+
+  function openManualAdjustVaultModal() {
+    const vault = DB.vault || { totalDong: 0, totalHardware: 0 };
+    document.getElementById("manualVaultDongInput").value = vault.totalDong || 0;
+    document.getElementById("manualVaultHardwareInput").value = vault.totalHardware || 0;
+    document.getElementById("adjustVaultModal").classList.add("active");
+  }
+
+  function closeManualAdjustVaultModal() {
+    document.getElementById("adjustVaultModal").classList.remove("active");
+  }
+
+  function saveManualAdjustVault() {
+    if (!DB.vault) DB.vault = { totalDong: 0, totalHardware: 0, hardwareLimit: 1800, logs: [] };
+    DB.vault.totalDong = parseInt(document.getElementById("manualVaultDongInput").value) || 0;
+    DB.vault.totalHardware = Math.min(1800, parseInt(document.getElementById("manualVaultHardwareInput").value) || 0);
+
+    closeManualAdjustVaultModal();
+    renderAllLocal();
+    saveDBToCloud();
+    alert("金庫數據已手動校正更新！");
   }
 
   function renderPlayerDetailView() {
@@ -765,7 +879,7 @@
     const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
 
     document.getElementById("detailPlayerName").innerText = name;
-    document.getElementById("detailPlayerSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人總出賽 ${stats.matchesPlayed} 將`;
+    document.getElementById("detailPlayerSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人累計 ${stats.matchesPlayed} 將`;
     const scoreEl = document.getElementById("detailPlayerScore");
     scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
     scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
@@ -883,77 +997,185 @@
     container.innerHTML = sessions.map((sess, sIdx) => {
       const resultsHtml = (sess.results || []).map(r => {
         const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
-        return `<span>${r.name}: <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b> <small style="color:var(--text-muted);">(${r.matchesPlayed}將)</small></span>`;
+        return `<span>${r.name} (${r.matchesPlayed}將): <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>`;
       }).join(" ｜ ");
 
-      const dongBadge = (sess.totalDong > 0) ? `<span style="color:var(--gold); font-size:12px; margin-left:8px;">(東哥 +${sess.totalDong})</span>` : '';
+      const dongBadge = (sess.totalDong > 0) 
+        ? `<span style="color:var(--gold); font-size:12px; margin-left:6px;">(東: +${sess.dongPart || 0} / 硬: +${sess.hardwarePart || 0})</span>` 
+        : '';
 
       return `
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
               <b style="color:#fff;">📁 ${sess.name}</b>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 實際總打 ${sess.actualMatches || 1} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">
+                (${sess.date} ｜ 總將數: <b style="color:var(--gold);">${sess.sessionTotalMatches || 1} 將</b>)
+              </span>
               ${dongBadge}
             </div>
-            <button class="btn-action-alt btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
+            <div>
+              <button class="btn-sm btn-edit" style="padding:3px 8px; font-size:11px; margin-right:4px;" onclick="openEditSessionModal(${sIdx})">✏️ 修改</button>
+              <button class="btn-sm btn-del" style="padding:3px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">🗑️ 刪除</button>
+            </div>
           </div>
           <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
-            ${resultsHtml} ${sess.totalDong > 0 ? `<br><span style="color:var(--gold); font-size:12px;">💰 東哥：+${sess.totalDong} 點 (🛠️硬體+${sess.dongHardware\vert{}\vert{}0} ｜ 👑純益+${sess.dongProfit||0})</span>` : ''}
+            ${resultsHtml}
           </div>
         </div>
       `;
     }).join("");
   }
 
-  function deleteArchivedSession(sIdx) {
-    if (!confirm("確定刪除此場次紀錄？所有選手積分、將數與金庫將連帶扣除回滾！")) return;
+  // --- 修改歷場戰報：支援東錢分拆與將數分數調整 ---
+  function openEditSessionModal(sIdx) {
+    currentlyEditingSessionIndex = sIdx;
+    const sess = DB.archivedSessions[sIdx];
+    document.getElementById("editSessionNameInput").value = sess.name || "";
+    document.getElementById("editSessionDateInput").value = sess.date || "";
+    document.getElementById("editSessionTotalMatchesInput").value = sess.sessionTotalMatches || 1;
+    document.getElementById("editDongPartInput").value = sess.dongPart || 0;
+    document.getElementById("editHardwarePartInput").value = sess.hardwarePart || 0;
+
+    const tbody = document.getElementById("editSessionResultsTbody");
+    tbody.innerHTML = (sess.results || []).map((r, rIdx) => `
+      <tr>
+        <td style="font-weight:bold; text-align:left;">${r.name}</td>
+        <td>
+          <input type="number" min="1" max="30" value="${r.matchesPlayed}" class="settle-input" id="edit-matches-${rIdx}" style="width:65px;">
+        </td>
+        <td>
+          <input type="number" value="${r.finalScore}" class="settle-input" id="edit-score-${rIdx}">
+        </td>
+      </tr>
+    `).join("");
+
+    document.getElementById("editSessionModal").classList.add("active");
+  }
+
+  function closeEditSessionModal() {
+    document.getElementById("editSessionModal").classList.remove("active");
+  }
+
+  function saveEditedSession() {
+    if (currentlyEditingSessionIndex === null) return;
+    const sIdx = currentlyEditingSessionIndex;
     const sess = DB.archivedSessions[sIdx];
 
-    (sess.results || []).forEach(r => {
-      if (DB.playerStats[r.name]) {
-        DB.playerStats[r.name].totalScore -= r.finalScore;
-        DB.playerStats[r.name].sessionsPlayed = Math.max(0, DB.playerStats[r.name].sessionsPlayed - 1);
-        DB.playerStats[r.name].matchesPlayed = Math.max(0, DB.playerStats[r.name].matchesPlayed - r.matchesPlayed);
-        if (r.finalScore > 0) DB.playerStats[r.name].winsCount = Math.max(0, DB.playerStats[r.name].winsCount - 1);
-      }
+    sess.name = document.getElementById("editSessionNameInput").value.trim() || sess.name;
+    sess.date = document.getElementById("editSessionDateInput").value.trim() || sess.date;
+    sess.sessionTotalMatches = parseInt(document.getElementById("editSessionTotalMatchesInput").value) || 1;
+
+    const newDongPart = parseInt(document.getElementById("editDongPartInput").value) || 0;
+    const newHardwarePart = parseInt(document.getElementById("editHardwarePartInput").value) || 0;
+    sess.dongPart = newDongPart;
+    sess.hardwarePart = newHardwarePart;
+    sess.totalDong = newDongPart + newHardwarePart;
+
+    (sess.results || []).forEach((r, rIdx) => {
+      const mcEl = document.getElementById(`edit-matches-${rIdx}`);
+      const scEl = document.getElementById(`edit-score-${rIdx}`);
+      r.matchesPlayed = mcEl ? (parseInt(mcEl.value) || 1) : 1;
+      r.finalScore = scEl ? (parseInt(scEl.value) || 0) : 0;
     });
 
+    recalculateAllLifetimeStats();
+
+    closeEditSessionModal();
+    renderAllLocal();
+    saveDBToCloud();
+    alert("歷場戰報已成功修改，東哥金庫與選手生涯總榜已重新校準！");
+  }
+
+  // 重新計算全生涯與金庫總和
+  function recalculateAllLifetimeStats() {
+    (DB.roster || DEFAULT_ROSTER).forEach(name => {
+      DB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    });
+
+    let totalMatches = 0;
+    let vaultDongSum = 0;
+    let vaultHwSum = 0;
+
+    (DB.archivedSessions || []).forEach(sess => {
+      totalMatches += (sess.sessionTotalMatches || 1);
+      vaultDongSum += (sess.dongPart || 0);
+      vaultHwSum += (sess.hardwarePart || 0);
+
+      (sess.results || []).forEach(r => {
+        if (!DB.playerStats[r.name]) {
+          DB.playerStats[r.name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+        }
+        DB.playerStats[r.name].totalScore += r.finalScore;
+        DB.playerStats[r.name].sessionsPlayed += 1;
+        DB.playerStats[r.name].matchesPlayed += r.matchesPlayed;
+        if (r.finalScore > 0) DB.playerStats[r.name].winsCount += 1;
+      });
+    });
+
+    DB.totalLeagueMatches = totalMatches;
+    if (DB.vault) {
+      DB.vault.totalDong = vaultDongSum;
+      DB.vault.totalHardware = Math.min(1800, vaultHwSum);
+    }
+  }
+
+  function deleteArchivedSession(sIdx) {
+    if (!confirm("確定刪除此場次紀錄？所有選手積分與東哥金庫將連帶扣除回滾！")) return;
+    const sess = DB.archivedSessions[sIdx];
+
     if (sess.totalDong > 0 && DB.vault) {
-      DB.vault.totalHardwarePaid = Math.max(0, (DB.vault.totalHardwarePaid || 0) - (sess.dongHardware || 0));
-      DB.vault.totalDongProfit = Math.max(0, (DB.vault.totalDongProfit || 0) - (sess.dongProfit || 0));
       DB.vault.logs = (DB.vault.logs || []).filter(l => l.sessionName !== sess.name);
     }
 
-    DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - (sess.actualMatches || 1));
     DB.archivedSessions.splice(sIdx, 1);
+    recalculateAllLifetimeStats();
 
     renderAllLocal();
     saveDBToCloud();
   }
 
+  // --- 選手後台 (支援切換前台可見性) ---
   function renderRosterView() {
     const container = document.getElementById("rosterListContainer");
-    document.getElementById("rosterCountBadge").innerText = `共 ${(DB.roster || []).length} 位`;
+    const roster = DB.roster || DEFAULT_ROSTER;
+    document.getElementById("rosterCountBadge").innerText = `共 ${roster.length} 位`;
     container.innerHTML = "";
 
-    (DB.roster || []).forEach(name => {
+    if (!DB.playerVisibility) DB.playerVisibility = {};
+
+    roster.forEach(name => {
       const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
+      const isVisible = DB.playerVisibility[name] !== false;
+
       container.innerHTML += `
         <div class="roster-item">
           <div>
-            <div style="font-weight: bold; font-size: 15px;">${name}</div>
+            <div style="font-weight: bold; font-size: 15px;">
+              ${name}
+              ${!isVisible ? '<span style="color:#f87171; font-size:11px; margin-left:4px;">(前台已隱藏)</span>' : ''}
+            </div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
               出賽: <b style="color:var(--gold);">${stats.sessionsPlayed}</b> 場 ｜ 總分: <b>${stats.totalScore}</b>
             </div>
           </div>
           <div class="roster-actions">
+            <button class="btn-sm btn-toggle-vis ${isVisible ? 'visible' : ''}" onclick="togglePlayerVisibility('${name}')">
+              ${isVisible ? '👁️ 前台顯示中' : '🚫 前台已隱藏'}
+            </button>
             <button class="btn-sm btn-edit" onclick="editPlayerName('${name}')">✏️ 改名</button>
             <button class="btn-sm btn-del" onclick="deletePlayer('${name}')">🗑️ 刪除</button>
           </div>
         </div>
       `;
     });
+  }
+
+  function togglePlayerVisibility(name) {
+    if (!DB.playerVisibility) DB.playerVisibility = {};
+    DB.playerVisibility[name] = !(DB.playerVisibility[name] !== false);
+    renderAllLocal();
+    saveDBToCloud();
   }
 
   function addNewPlayer() {
@@ -966,6 +1188,8 @@
     DB.roster.push(name);
     if (!DB.playerStats) DB.playerStats = {};
     DB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    if (!DB.playerVisibility) DB.playerVisibility = {};
+    DB.playerVisibility[name] = true;
     
     input.value = "";
     renderAllLocal();
@@ -983,6 +1207,11 @@
     if (rIdx !== -1) DB.roster[rIdx] = cleanName;
     DB.playerStats[cleanName] = DB.playerStats[oldName];
     delete DB.playerStats[oldName];
+
+    if (DB.playerVisibility) {
+      DB.playerVisibility[cleanName] = DB.playerVisibility[oldName];
+      delete DB.playerVisibility[oldName];
+    }
 
     if (DB.currentSession && DB.currentSession.players) {
       DB.currentSession.players = DB.currentSession.players.map(s => s === oldName ? cleanName : s);
@@ -1005,6 +1234,7 @@
     if (!confirm(`確定刪除選手【${name}】？`)) return;
     DB.roster = DB.roster.filter(n => n !== name);
     delete DB.playerStats[name];
+    if (DB.playerVisibility) delete DB.playerVisibility[name];
     renderAllLocal();
     saveDBToCloud();
   }

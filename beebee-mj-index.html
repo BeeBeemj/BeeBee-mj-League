@@ -94,7 +94,7 @@
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
 
-  <!-- 3. 生涯總積分榜 -->
+  <!-- 3. 生涯總積分榜 (只呈現前台可見選手) -->
   <div class="card">
     <div class="card-title">
       <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
@@ -108,7 +108,7 @@
             <th>選手</th>
             <th>總積分</th>
             <th>出賽場數</th>
-            <th>個人出賽將數</th>
+            <th>個人總將數</th>
             <th>場勝率</th>
           </tr>
         </thead>
@@ -117,7 +117,7 @@
     </div>
   </div>
 
-  <!-- 4. 選手個人專頁 -->
+  <!-- 4. 選手個人專頁 (走勢與歷場戰績) -->
   <div class="card">
     <div class="card-title">
       <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
@@ -135,12 +135,12 @@
         </div>
       </div>
       <div class="trend-chart-box" id="pubTrendChartBox"></div>
-      <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場戰報：</div>
+      <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場出賽紀錄：</div>
       <div id="pubDetailMatchList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
     </div>
   </div>
 
-  <!-- 5. 歷場戰報 -->
+  <!-- 5. 歷場戰報 (純勝負，無東哥) -->
   <div class="card">
     <div class="card-title">
       <span>📜 歷場完賽戰報</span>
@@ -161,10 +161,14 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
 
-  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
+  const DEFAULT_ROSTER = [
+    "胖弟", "大雄", "安妮", "公公", "鴨鴨", "翔哥", "中雯", 
+    "酒空馨", "于兄", "阿康", "JG", "學長", "萱", "Doggy"
+  ];
 
   let currentDB = {
     roster: [...DEFAULT_ROSTER],
+    playerVisibility: {},
     playerStats: {},
     currentSession: null,
     totalLeagueMatches: 0,
@@ -172,6 +176,7 @@
   };
   DEFAULT_ROSTER.forEach(name => {
     currentDB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    currentDB.playerVisibility[name] = true;
   });
 
   let pubSelectedPlayer = null;
@@ -199,7 +204,12 @@
     document.getElementById("leagueMatchesTotal").innerText = `累計：${totalSessions} 場 / ${DB.totalLeagueMatches || 0} 將`;
 
     const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
-    const playerMetrics = rosterList.map(name => {
+    const visibility = DB.playerVisibility || {};
+
+    // 依據後台設定，過濾出「前台可見」的選手
+    const visibleRoster = rosterList.filter(name => visibility[name] !== false);
+
+    const playerMetrics = visibleRoster.map(name => {
       const p = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
       const winRateNum = p.sessionsPlayed > 0 ? (p.winsCount / p.sessionsPlayed) : 0;
       return {
@@ -233,7 +243,7 @@
       `;
     });
 
-    renderPublicPlayerPills(DB);
+    renderPublicPlayerPills(visibleRoster, DB);
     renderArchivedSessions(DB.archivedSessions || []);
   }
 
@@ -269,18 +279,23 @@
     `;
   }
 
-  function renderPublicPlayerPills(DB) {
+  function renderPublicPlayerPills(visibleRoster, DB) {
     const container = document.getElementById("publicPlayerPills");
-    const roster = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
 
-    container.innerHTML = roster.map(name => `
+    container.innerHTML = visibleRoster.map(name => `
       <button class="btn-pill ${pubSelectedPlayer === name ? 'active' : ''}" onclick="selectPubPlayer('${name}')">
         ${name}
       </button>
     `).join("");
 
-    if (!pubSelectedPlayer && roster.length > 0) pubSelectedPlayer = roster[0];
-    if (pubSelectedPlayer) renderPubPlayerDetail(pubSelectedPlayer, DB);
+    if ((!pubSelectedPlayer || !visibleRoster.includes(pubSelectedPlayer)) && visibleRoster.length > 0) {
+      pubSelectedPlayer = visibleRoster[0];
+    }
+    if (pubSelectedPlayer && visibleRoster.includes(pubSelectedPlayer)) {
+      renderPubPlayerDetail(pubSelectedPlayer, DB);
+    } else {
+      document.getElementById("publicPlayerDetailBox").style.display = "none";
+    }
   }
 
   function selectPubPlayer(name) {
@@ -293,7 +308,7 @@
     const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
 
     document.getElementById("pubDetailName").innerText = name;
-    document.getElementById("pubDetailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人出賽 ${stats.matchesPlayed} 將`;
+    document.getElementById("pubDetailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人累計 ${stats.matchesPlayed} 將`;
     const scoreEl = document.getElementById("pubDetailScore");
     scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
     scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
@@ -325,7 +340,7 @@
       <div style="background:#1e293b; border:1px solid #334155; border-radius:6px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <b>${item.title}</b>
-          <span style="font-size:11px; color:var(--text-muted); display:block;">個人出賽 ${item.matches} 將</span>
+          <span style="font-size:11px; color:var(--text-muted); display:block;">出賽 ${item.matches} 將</span>
         </div>
         <span style="color:${item.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:15px;">
           ${item.score >= 0 ? '+'+item.score : item.score}
@@ -402,7 +417,7 @@
       <div class="award-card full-width">
         <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
-        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人總出賽 ${topScore.matchesPlayed} 將 ｜ 奪冠 ${topScore.winsCount} 次</div>
+        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人 ${topScore.matchesPlayed} 將 ｜ 獲 ${topScore.winsCount} 次單場冠軍</div>
       </div>
       <div class="award-card">
         <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
@@ -412,7 +427,7 @@
       <div class="award-card">
         <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
         <div class="award-player">${topWinRate.name}</div>
-        <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (勝出 ${topWinRate.winsCount} 場)</div>
+        <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (累計 ${topWinRate.winsCount} 勝)</div>
       </div>
       <div class="award-card full-width">
         <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>
@@ -424,6 +439,7 @@
     document.getElementById("awardsContainer").innerHTML = awardsHtml;
   }
 
+  // 歷場戰報：無任何東哥字樣，只顯示純淨勝負
   function renderArchivedSessions(sessions) {
     const container = document.getElementById("archivedSessionsContainer");
     document.getElementById("matchArchiveCount").innerText = `共 ${sessions.length} 場`;
@@ -436,21 +452,23 @@
     container.innerHTML = sessions.map(sess => {
       const resultsHtml = (sess.results || []).map(r => {
         const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
-        return `<span>${r.name}: <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b> <small style="color:var(--text-muted);">(${r.matchesPlayed}將)</small></span>`;
+        return `
+          <span>${r.name} (${r.matchesPlayed}將): <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>
+        `;
       }).join(" ｜ ");
-
-      const dongHtml = (sess.totalDong > 0) ? `<br><span style="color:var(--gold); font-size:12px;">💰 東哥：+${sess.totalDong} 點</span>` : '';
 
       return `
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
               <b style="color:#fff;">📁 ${sess.name}</b>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 實際總打 ${sess.actualMatches || 1} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">
+                (${sess.date} ｜ 全場總計: <b style="color:var(--gold);">${sess.sessionTotalMatches || 1} 將</b>)
+              </span>
             </div>
           </div>
           <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
-            ${resultsHtml} ${dongHtml}
+            ${resultsHtml}
           </div>
         </div>
       `;
