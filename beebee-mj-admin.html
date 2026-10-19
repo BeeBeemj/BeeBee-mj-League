@@ -18,42 +18,52 @@
       --gold: #f59e0b;
       --accent: #6366f1;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent; 
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", sans-serif;
       background: var(--bg);
       color: var(--text);
-      margin: 0;
-      padding: 8px;
+      padding: 10px;
       min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
+      position: relative;
     }
-    .container { max-width: 680px; margin: 0 auto; padding-bottom: 30px; }
+    .container { 
+      max-width: 680px; 
+      margin: 0 auto; 
+      padding-bottom: 30px; 
+      position: relative;
+      z-index: 10;
+    }
 
-    /* 手機版優化：水平流暢滑動導覽列，字體絕不換行 */
+    /* 雙列固定導覽列（2列3欄），字體不換行、免左右滑動 */
     .tab-bar {
-      display: flex;
-      overflow-x: auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, auto);
       gap: 6px;
       margin-bottom: 12px;
-      padding-bottom: 4px;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
     }
-    .tab-bar::-webkit-scrollbar { display: none; }
     .tab-btn {
-      flex: 0 0 auto;
-      padding: 10px 14px;
+      padding: 10px 4px;
       background: #1e293b;
       border: 1px solid var(--card-border);
-      border-radius: 20px;
+      border-radius: 8px;
       color: var(--text-muted);
       font-size: 13px;
       font-weight: 700;
-      white-space: nowrap;
+      text-align: center;
       cursor: pointer;
       user-select: none;
-      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      white-space: nowrap;
+      min-height: 42px;
     }
     .tab-btn.active {
       background: var(--primary);
@@ -106,12 +116,12 @@
       font-size: 15px;
     }
 
-    /* 手機優化按鈕尺寸 */
+    /* 手機按鈕保證可按（標準觸控尺寸） */
     .btn-submit {
-      padding: 12px 16px;
-      font-size: 15px;
+      padding: 10px 16px;
+      font-size: 14px;
       font-weight: 800;
-      border-radius: 10px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       background: var(--primary);
@@ -119,11 +129,11 @@
       display: inline-flex;
       justify-content: center;
       align-items: center;
-      min-height: 44px;
+      min-height: 42px;
       white-space: nowrap;
     }
     .btn-action-alt {
-      padding: 10px 14px;
+      padding: 8px 12px;
       font-size: 13px;
       font-weight: 700;
       border-radius: 8px;
@@ -136,13 +146,12 @@
     }
     .btn-danger { background: #b91c1c; border-color: #991b1b; color: #fff; }
 
-    /* 表格手機優化 */
     .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .settle-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; }
-    .settle-table th, .settle-table td { padding: 10px 6px; border-bottom: 1px solid var(--card-border); text-align: center; }
+    .settle-table th, .settle-table td { padding: 10px 4px; border-bottom: 1px solid var(--card-border); text-align: center; }
     .settle-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .settle-input {
-      width: 86px;
+      width: 80px;
       padding: 8px 4px;
       background: #0f172a;
       border: 1px solid var(--card-border);
@@ -163,9 +172,9 @@
       justify-content: center;
       align-items: center;
       padding: 16px;
-      z-index: 9999;
+      z-index: 1000;
     }
-    .modal-overlay.active { display: flex; }
+    .modal-overlay.active { display: flex !important; }
     .modal {
       background: #1e293b;
       border: 1px solid var(--card-border);
@@ -195,16 +204,15 @@
     .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
     .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
 
-    /* 硬體回本進度條 */
     .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
     
-    /* 解鎖卡片遮罩 (預設無 display:none，由 JS 判斷關閉) */
+    /* 密碼登入層：不擋住底層事件 */
     #lockScreen {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(11, 17, 32, 0.98);
-      display: flex;
+      display: none;
       justify-content: center;
       align-items: center;
       padding: 20px;
@@ -220,29 +228,31 @@
       text-align: center;
     }
   </style>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
 
-<!-- 密碼解鎖層 (驗證後永久關閉) -->
-<div id="lockScreen" style="display: none;">
+<!-- 密碼登入層 -->
+<div id="lockScreen">
   <div class="lock-box">
     <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼</p>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼以啟用操作</p>
     <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
-    <button type="button" class="btn-submit" style="width:100%;" id="btnLogin">解鎖登入</button>
+    <button type="button" class="btn-submit" style="width:100%;" id="btnLoginAction">解鎖登入</button>
   </div>
 </div>
 
-<!-- 主容器 -->
 <div class="container" id="adminApp">
-  <!-- 頂部手機水平滑動導覽列 -->
+  <!-- 雙列固定選單（2列3欄） -->
   <div class="tab-bar">
-    <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
-    <div class="tab-btn" id="tabVaultBtn" onclick="switchTab('vault')">💰 東哥金庫</div>
-    <div class="tab-btn" id="tabPlayerDetailBtn" onclick="switchTab('playerDetail')">👤 選手專頁</div>
-    <div class="tab-btn" id="tabLeaderboardBtn" onclick="switchTab('leaderboard')">📊 生涯總榜</div>
-    <div class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">📜 歷場戰報</div>
-    <div class="tab-btn" id="tabRosterBtn" onclick="switchTab('roster')">⚙️ 選手管理</div>
+    <button type="button" class="tab-btn active" id="tabSettleBtn">🀄 當場結算</button>
+    <button type="button" class="tab-btn" id="tabVaultBtn">💰 東哥金庫</button>
+    <button type="button" class="tab-btn" id="tabPlayerDetailBtn">👤 選手專頁</button>
+    <button type="button" class="tab-btn" id="tabLeaderboardBtn">📊 生涯總榜</button>
+    <button type="button" class="tab-btn" id="tabHistoryBtn">📜 歷場戰報</button>
+    <button type="button" class="tab-btn" id="tabRosterBtn">⚙️ 選手管理</button>
   </div>
 
   <!-- 分頁 1：當場場次總結算 -->
@@ -253,7 +263,7 @@
         <span id="sessionStatusTitle" style="font-size:15px; font-weight:bold; color:#fff;">牌桌待機中</span>
       </div>
       <div>
-        <button id="btnToggleSession" class="btn-submit" onclick="openStartSessionModal()">🚀 開啟新場次</button>
+        <button type="button" id="btnToggleSession" class="btn-submit">🚀 開啟新場次</button>
       </div>
     </div>
 
@@ -264,11 +274,10 @@
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
 
-        <!-- 場次實際總將數 (與個人將數分開) -->
         <div style="background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <b style="color:#fff; font-size:14px;">🀄 本場實際牌局總將數：</b>
-            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替共打3將，此處填 3，下方填每人出賽2將)</span>
+            <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替共打3將填 3，下方填每人出賽2將)</span>
           </div>
           <input type="number" min="1" max="50" value="3" id="inputTotalSessionMatches" class="settle-input" style="width:70px;">
         </div>
@@ -290,18 +299,16 @@
           </table>
         </div>
 
-        <!-- 東哥獨立輸入欄位 -->
         <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
               <b style="color:var(--gold); font-size:14px;">💰 東池總實收積分：</b>
               <span id="dongSplitNotice" style="font-size:11px; color:#a5b4fc; display:block;">(50% 撥入硬體攤提，50% 撥入東哥金庫)</span>
             </div>
-            <input type="number" id="inputDongPoolScore" value="0" min="0" step="20" class="settle-input" oninput="checkSumBalance()">
+            <input type="number" id="inputDongPoolScore" value="0" min="0" step="20" class="settle-input">
           </div>
         </div>
 
-        <!-- 籌碼平衡檢核 -->
         <div style="margin-top:14px; padding:12px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <span style="font-size:12px; color:var(--text-muted);">含東哥全場合計：</span>
@@ -311,8 +318,8 @@
         </div>
 
         <div style="margin-top:14px; display:flex; gap:8px;">
-          <button class="btn-submit" style="flex:1;" onclick="submitSessionSettlement()">💾 完成本場結算並歸檔</button>
-          <button class="btn-action-alt btn-danger" onclick="cancelCurrentSession()">✕ 取消本場</button>
+          <button type="button" class="btn-submit" style="flex:1;" id="btnSubmitSettlement">💾 完成本場結算並歸檔</button>
+          <button type="button" class="btn-action-alt btn-danger" id="btnCancelSession">✕ 取消本場</button>
         </div>
       </div>
     </div>
@@ -430,7 +437,7 @@
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
       <div style="display: flex; gap: 8px;">
         <input type="text" id="newPlayerNameInput" placeholder="輸入新選手名稱..." style="flex: 1; padding: 10px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; color: #fff;">
-        <button class="btn-submit" style="width: 100px;" onclick="addNewPlayer()">新增</button>
+        <button type="button" class="btn-submit" style="width: 90px;" id="btnAddNewPlayer">新增</button>
       </div>
     </div>
     <div class="card">
@@ -448,7 +455,7 @@
   <div class="modal">
     <div class="modal-header">
       <span style="font-weight:bold; font-size:16px;">🚀 開啟新場次聚會</span>
-      <span style="cursor: pointer; font-size: 20px;" onclick="closeStartSessionModal()">✕</span>
+      <span style="cursor: pointer; font-size: 20px;" id="btnCloseStartModal">✕</span>
     </div>
     <div class="form-row">
       <label>📅 牌局日期：</label>
@@ -461,7 +468,7 @@
     
     <div class="form-row" style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
       <label style="color:#fff; font-weight:bold; display:flex; align-items:center; cursor:pointer;">
-        <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:22px; height:22px; margin-right:10px;">
+        <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:20px; height:20px; margin-right:10px;">
         🏠 在主場打牌 (計算東錢池與硬體攤提)
       </label>
     </div>
@@ -472,17 +479,16 @@
     </div>
 
     <div style="display: flex; gap: 8px; margin-top: 16px;">
-      <button class="btn-submit" style="flex: 1;" onclick="confirmStartSession()">確認開場</button>
-      <button class="btn-action-alt" style="width: 80px;" onclick="closeStartSessionModal()">取消</button>
+      <button type="button" class="btn-submit" style="flex: 1;" id="btnConfirmStartSession">確認開場</button>
+      <button type="button" class="btn-action-alt" style="width: 80px;" id="btnCancelStartModal">取消</button>
     </div>
   </div>
 </div>
 
-<!-- 核心業務邏輯腳本：完全本地優先，零阻塞 -->
 <script>
   const ADMIN_PASSWORD = "3333";
-  const AUTH_KEY = "BEEBEE_ADMIN_AUTH_PERM_V2";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_FINAL_ROBUST";
+  const AUTH_KEY = "BEEBEE_ADMIN_AUTH_PERM_V3";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V29";
   const HARDWARE_TARGET = 1800;
   const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
 
@@ -502,7 +508,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 28,
+      version: 29,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -517,14 +523,12 @@
   let viewingPlayerDetailName = null;
   let dbRef = null;
 
-  // 1. 驗證與免重複登入
+  // 1. 密碼驗證：永久保存
   function checkAuth() {
     const isAuth = localStorage.getItem(AUTH_KEY) === "true";
     const lock = document.getElementById("lockScreen");
-    if (isAuth) {
-      if (lock) lock.style.display = "none";
-    } else {
-      if (lock) lock.style.display = "flex";
+    if (lock) {
+      lock.style.display = isAuth ? "none" : "flex";
     }
   }
 
@@ -551,7 +555,7 @@
     }
     renderAllLocal();
 
-    // 背景異步連接 Firebase，成功則覆蓋並重繪，失敗則靜默保持本地運行
+    // 異步連接 Firebase
     setTimeout(() => {
       try {
         if (typeof firebase !== 'undefined' && firebase.initializeApp) {
@@ -562,7 +566,7 @@
           dbRef.on("value", snapshot => {
             try {
               const val = snapshot.val();
-              if (val && val.version >= 28) {
+              if (val && val.version >= 29) {
                 DB = val;
                 localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
                 renderAllLocal();
@@ -573,9 +577,9 @@
           });
         }
       } catch(err) {
-        console.warn("Firebase 背景連接失敗，保持本機運行：", err);
+        console.warn("保持本機運行：", err);
       }
-    }, 500);
+    }, 400);
   }
 
   function saveDBToCloud() {
@@ -586,19 +590,13 @@
   }
 
   function switchTab(tab) {
-    document.getElementById("pageSettle").style.display = tab === 'settle' ? 'block' : 'none';
-    document.getElementById("pageVault").style.display = tab === 'vault' ? 'block' : 'none';
-    document.getElementById("pagePlayerDetail").style.display = tab === 'playerDetail' ? 'block' : 'none';
-    document.getElementById("pageLeaderboard").style.display = tab === 'leaderboard' ? 'block' : 'none';
-    document.getElementById("pageHistory").style.display = tab === 'history' ? 'block' : 'none';
-    document.getElementById("pageRoster").style.display = tab === 'roster' ? 'block' : 'none';
-
-    document.getElementById("tabSettleBtn").classList.toggle("active", tab === 'settle');
-    document.getElementById("tabVaultBtn").classList.toggle("active", tab === 'vault');
-    document.getElementById("tabPlayerDetailBtn").classList.toggle("active", tab === 'playerDetail');
-    document.getElementById("tabLeaderboardBtn").classList.toggle("active", tab === 'leaderboard');
-    document.getElementById("tabHistoryBtn").classList.toggle("active", tab === 'history');
-    document.getElementById("tabRosterBtn").classList.toggle("active", tab === 'roster');
+    const tabs = ['settle', 'vault', 'playerDetail', 'leaderboard', 'history', 'roster'];
+    tabs.forEach(t => {
+      const page = document.getElementById('page' + t.charAt(0).toUpperCase() + t.slice(1));
+      const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
+      if (page) page.style.display = (t === tab) ? 'block' : 'none';
+      if (btn) btn.classList.toggle('active', t === tab);
+    });
 
     if (tab === 'vault') renderVaultView();
     if (tab === 'playerDetail') renderPlayerDetailView();
@@ -728,10 +726,14 @@
           <input type="number" min="1" max="20" value="2" class="settle-input input-matches" id="matches-${name}">
         </td>
         <td>
-          <input type="number" step="10" value="0" class="settle-input input-score" id="score-${name}" oninput="checkSumBalance()">
+          <input type="number" step="10" value="0" class="settle-input input-score" id="score-${name}">
         </td>
       </tr>
     `).join("");
+
+    // 綁定動態輸入即時平衡檢核
+    const inputs = tbody.querySelectorAll('.input-score');
+    inputs.forEach(inp => inp.addEventListener('input', checkSumBalance));
 
     checkSumBalance();
   }
@@ -756,11 +758,11 @@
 
     if (totalBalance === 0) {
       displayEl.style.color = "var(--win)";
-      badgeEl.innerText = "✅ 完美平衡 (選手+東哥 總和為 0)";
+      badgeEl.innerText = "✅ 完美平衡 (總和為 0)";
       badgeEl.style.color = "var(--win)";
     } else {
       displayEl.style.color = "var(--lose)";
-      badgeEl.innerText = `⚠️ 差額 ${totalBalance} 點 (請核對籌碼)`;
+      badgeEl.innerText = `⚠️ 差額 ${totalBalance} 點`;
       badgeEl.style.color = "var(--lose)";
     }
 
@@ -901,10 +903,17 @@
     const roster = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
 
     pillsContainer.innerHTML = roster.map(name => `
-      <button class="btn-sm" style="background:${viewingPlayerDetailName === name ? 'var(--primary)' : '#0f172a'}; color:${viewingPlayerDetailName === name ? '#000' : '#fff'};" onclick="selectPlayerForDetail('${name}')">
+      <button type="button" class="btn-sm" style="background:${viewingPlayerDetailName === name ? 'var(--primary)' : '#0f172a'}; color:${viewingPlayerDetailName === name ? '#000' : '#fff'};" data-name="${name}">
         ${name}
       </button>
     `).join("");
+
+    pillsContainer.querySelectorAll('.btn-sm').forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewingPlayerDetailName = btn.getAttribute('data-name');
+        renderPlayerDetailView();
+      });
+    });
 
     if (!viewingPlayerDetailName && roster.length > 0) viewingPlayerDetailName = roster[0];
     if (!viewingPlayerDetailName) return;
@@ -954,11 +963,6 @@
         </span>
       </div>
     `).join("");
-  }
-
-  function selectPlayerForDetail(name) {
-    viewingPlayerDetailName = name;
-    renderPlayerDetailView();
   }
 
   function renderTrendSVG(points) {
@@ -1047,7 +1051,7 @@
               <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || 1} 將)</span>
               ${dongBadge}
             </div>
-            <button class="btn-action-alt btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
+            <button type="button" class="btn-action-alt btn-danger btn-del-session" style="padding:4px 8px; font-size:11px;" data-idx="${sIdx}">刪除場次</button>
           </div>
           <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
             ${resultsHtml} ${sess.totalDong > 0 ? `<br><span style="color:var(--gold); font-size:12px;">💰 東池實收：+${sess.totalDong} 點 (硬體攤提 +${sess.allocatedHardware \vert{}\vert{} 0} ｜ 東哥純益 +${sess.allocatedDong || 0})</span>` : ''}
@@ -1055,6 +1059,12 @@
         </div>
       `;
     }).join("");
+
+    container.querySelectorAll('.btn-del-session').forEach(btn => {
+      btn.addEventListener('click', () => {
+        deleteArchivedSession(parseInt(btn.getAttribute('data-idx')));
+      });
+    });
   }
 
   function deleteArchivedSession(sIdx) {
@@ -1091,7 +1101,7 @@
     container.innerHTML = "";
 
     (DB.roster || []).forEach(name => {
-      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
+      const stats = DB.playerStats ? (DB.playerStats[name] || { totalScore: 0, sessionsPlayed: 0 }) : { totalScore: 0, sessionsPlayed: 0 };
       container.innerHTML += `
         <div class="roster-item">
           <div>
@@ -1101,11 +1111,18 @@
             </div>
           </div>
           <div class="roster-actions">
-            <button class="btn-sm btn-edit" onclick="editPlayerName('${name}')">✏️ 改名</button>
-            <button class="btn-sm btn-del" onclick="deletePlayer('${name}')">🗑️ 刪除</button>
+            <button type="button" class="btn-sm btn-edit btn-roster-edit" data-name="${name}">✏️ 改名</button>
+            <button type="button" class="btn-sm btn-del btn-roster-del" data-name="${name}">🗑️ 刪除</button>
           </div>
         </div>
       `;
+    });
+
+    container.querySelectorAll('.btn-roster-edit').forEach(btn => {
+      btn.addEventListener('click', () => editPlayerName(btn.getAttribute('data-name')));
+    });
+    container.querySelectorAll('.btn-roster-del').forEach(btn => {
+      btn.addEventListener('click', () => deletePlayer(btn.getAttribute('data-name')));
     });
   }
 
@@ -1162,22 +1179,56 @@
     saveDBToCloud();
   }
 
-  // 立即綁定事件，防止手機事件失效
+  // DOMContentLoaded 事件直接安全綁定
   window.addEventListener("DOMContentLoaded", () => {
     checkAuth();
     initDataPipeline();
 
-    // 實體按鍵監聽
-    const btnLogin = document.getElementById("btnLogin");
-    if (btnLogin) {
-      btnLogin.addEventListener("click", verifyPassword);
-    }
+    // 登入按鈕
+    const btnLogin = document.getElementById("btnLoginAction");
+    if (btnLogin) btnLogin.addEventListener("click", verifyPassword);
     const inputPwd = document.getElementById("inputAdminPassword");
     if (inputPwd) {
       inputPwd.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.keyCode === 13) verifyPassword();
       });
     }
+
+    // 開場相關事件
+    const btnToggle = document.getElementById("btnToggleSession");
+    if (btnToggle) btnToggle.addEventListener("click", openStartSessionModal);
+    const btnCloseStart = document.getElementById("btnCloseStartModal");
+    if (btnCloseStart) btnCloseStart.addEventListener("click", closeStartSessionModal);
+    const btnCancelStart = document.getElementById("btnCancelStartModal");
+    if (btnCancelStart) btnCancelStart.addEventListener("click", closeStartSessionModal);
+    const btnConfirmStart = document.getElementById("btnConfirmStartSession");
+    if (btnConfirmStart) btnConfirmStart.addEventListener("click", confirmStartSession);
+
+    // 結算相關事件
+    const btnDongInput = document.getElementById("inputDongPoolScore");
+    if (btnDongInput) btnDongInput.addEventListener("input", checkSumBalance);
+    const btnSubmitSettle = document.getElementById("btnSubmitSettlement");
+    if (btnSubmitSettle) btnSubmitSettle.addEventListener("click", submitSessionSettlement);
+    const btnCancelSettle = document.getElementById("btnCancelSession");
+    if (btnCancelSettle) btnCancelSettle.addEventListener("click", cancelCurrentSession);
+
+    // 新增選手按鈕
+    const btnAddPlayer = document.getElementById("btnAddNewPlayer");
+    if (btnAddPlayer) btnAddPlayer.addEventListener("click", addNewPlayer);
+
+    // 雙列 Tab 按鈕綁定
+    const tabMap = [
+      { id: "tabSettleBtn", key: "settle" },
+      { id: "tabVaultBtn", key: "vault" },
+      { id: "tabPlayerDetailBtn", key: "playerDetail" },
+      { id: "tabLeaderboardBtn", key: "leaderboard" },
+      { id: "tabHistoryBtn", key: "history" },
+      { id: "tabRosterBtn", key: "roster" }
+    ];
+    tabMap.forEach(item => {
+      const el = document.getElementById(item.id);
+      if (el) el.addEventListener("click", () => switchTab(item.key));
+    });
   });
 </script>
 </body>
