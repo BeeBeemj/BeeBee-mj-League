@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>BeeBee 麻將聯賽 - 後台系統</title>
   
   <style>
@@ -24,12 +24,182 @@
       background: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 10px;
+      padding: 8px;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
+    .container { max-width: 680px; margin: 0 auto; padding-bottom: 30px; }
+
+    /* 手機版優化：水平流暢滑動導覽列，字體絕不換行 */
+    .tab-bar {
+      display: flex;
+      overflow-x: auto;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 0 0 auto;
+      padding: 10px 14px;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #0b1120;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .session-banner {
+      background: #1e1b4b;
+      border: 1px solid #4f46e5;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+    .form-row input, .form-row select {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 15px;
+    }
+
+    /* 手機優化按鈕尺寸 */
+    .btn-submit {
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: var(--primary);
+      color: #0b1120;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 44px;
+      white-space: nowrap;
+    }
+    .btn-action-alt {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: #334155;
+      color: #fff;
+      cursor: pointer;
+      min-height: 40px;
+      white-space: nowrap;
+    }
+    .btn-danger { background: #b91c1c; border-color: #991b1b; color: #fff; }
+
+    /* 表格手機優化 */
+    .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .settle-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; }
+    .settle-table th, .settle-table td { padding: 10px 6px; border-bottom: 1px solid var(--card-border); text-align: center; }
+    .settle-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
+    .settle-input {
+      width: 86px;
+      padding: 8px 4px;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: #fff;
+      font-weight: bold;
+      font-family: monospace;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    /* 彈窗樣式 */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 18px;
+    }
+
+    .roster-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; white-space: nowrap; }
+    .btn-del { background: #b91c1c; color: #fff; border-color: #991b1b; }
+    .btn-edit { background: #0284c7; color: #fff; border-color: #0369a1; }
+
+    .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
+    .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
+
+    /* 硬體回本進度條 */
+    .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
     
-    /* 密碼防護層：解鎖後設為 display:none 徹底釋放點擊事件 */
+    /* 解鎖卡片遮罩 (預設無 display:none，由 JS 判斷關閉) */
     #lockScreen {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -48,137 +218,34 @@
       width: 100%;
       max-width: 320px;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
-
-    .tab-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 12px; }
-    .tab-btn {
-      padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
-      border-radius: 8px; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
-      user-select: none;
-    }
-    .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #0b1120; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-
-    .session-banner {
-      background: #1e1b4b; border: 1px solid #4f46e5; border-radius: 10px;
-      padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
-    }
-
-    .form-row { margin-bottom: 12px; }
-    .form-row label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
-    .form-row input, .form-row select { width: 100%; padding: 8px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff; font-size: 14px; }
-    
-    .btn-submit { padding: 10px 14px; font-size: 14px; font-weight: 800; border-radius: 8px; border: none; cursor: pointer; background: var(--primary); color: #000; }
-    .btn-action-alt { padding: 8px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid var(--card-border); background: #334155; color: #fff; cursor: pointer; }
-    .btn-danger { background: #b91c1c; border-color: #991b1b; color: #fff; }
-
-    .settle-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-    .settle-table th, .settle-table td { padding: 8px 6px; border-bottom: 1px solid var(--card-border); text-align: center; }
-    .settle-table th { background: #0f172a; color: var(--text-muted); }
-    .settle-input { width: 90px; padding: 6px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff; font-weight: bold; font-family: monospace; text-align: center; font-size: 15px; }
-
-    .stats-table-wrapper { overflow-x: auto; }
-    table.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-    table.stats-table th, table.stats-table td { padding: 8px 4px; border-bottom: 1px solid var(--card-border); white-space: nowrap; }
-    table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
-    .highlight-cell { font-weight: bold; font-family: monospace; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 9999; }
-    .modal-overlay.active { display: flex; }
-    .modal { background: #1e293b; border: 1px solid var(--card-border); border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 18px; }
-    .modal-header { font-size: 16px; font-weight: bold; margin-bottom: 14px; display: flex; justify-content: space-between; }
-
-    .roster-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid var(--card-border); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
-    .btn-sm { padding: 6px 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--card-border); cursor: pointer; }
-    .btn-del { background: #b91c1c; color: #fff; border-color: #991b1b; }
-    .btn-edit { background: #0284c7; color: #fff; border-color: #0369a1; }
-
-    .session-archive-card { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-    .session-archive-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #1e293b; user-select: none; }
-    .trend-chart-box { width: 100%; height: 160px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
-
-    .progress-bar-bg { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border); margin: 8px 0; }
-    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); width: 0%; transition: width 0.3s ease; }
   </style>
-
-  <!-- 載入 Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-
-  <!-- 核心認證邏輯：使用 localStorage 永久保持登入 -->
-  <script>
-    const ADMIN_PASSWORD = "3333";
-    const AUTH_KEY = "BEEBEE_ADMIN_PERM_AUTH";
-
-    function checkAuth() {
-      if (localStorage.getItem(AUTH_KEY) === "true") {
-        hideLockScreen();
-      } else {
-        showLockScreen();
-      }
-    }
-
-    function showLockScreen() {
-      const lock = document.getElementById("lockScreen");
-      if (lock) lock.style.display = "flex";
-    }
-
-    function hideLockScreen() {
-      const lock = document.getElementById("lockScreen");
-      if (lock) {
-        lock.style.display = "none";
-        lock.style.pointerEvents = "none"; // 徹底消除觸控阻擋
-      }
-    }
-
-    function verifyPassword() {
-      const inputEl = document.getElementById("inputAdminPassword");
-      const pwd = inputEl ? inputEl.value.trim() : "";
-      if (pwd === ADMIN_PASSWORD) {
-        localStorage.setItem(AUTH_KEY, "true"); // 永久記住
-        hideLockScreen();
-        if (typeof initAppPipeline === "function") {
-          initAppPipeline();
-        }
-      } else {
-        alert("密碼錯誤，請重新輸入！");
-        if (inputEl) inputEl.value = "";
-      }
-    }
-
-    function handlePwdKey(e) {
-      if (e.key === "Enter" || e.keyCode === 13) {
-        verifyPassword();
-      }
-    }
-  </script>
 </head>
 <body>
 
-<!-- 密碼解鎖層 (登入過後徹底消失，不再阻擋點擊) -->
-<div id="lockScreen">
+<!-- 密碼解鎖層 (驗證後永久關閉) -->
+<div id="lockScreen" style="display: none;">
   <div class="lock-box">
     <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼以啟用操作</p>
-    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." onkeydown="handlePwdKey(event)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
-    <button type="button" class="btn-submit" style="width:100%; cursor:pointer;" onclick="verifyPassword()">解鎖登入</button>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼</p>
+    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
+    <button type="button" class="btn-submit" style="width:100%;" id="btnLogin">解鎖登入</button>
   </div>
 </div>
 
-<!-- 主介面容器 -->
+<!-- 主容器 -->
 <div class="container" id="adminApp">
+  <!-- 頂部手機水平滑動導覽列 -->
   <div class="tab-bar">
     <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
     <div class="tab-btn" id="tabVaultBtn" onclick="switchTab('vault')">💰 東哥金庫</div>
     <div class="tab-btn" id="tabPlayerDetailBtn" onclick="switchTab('playerDetail')">👤 選手專頁</div>
     <div class="tab-btn" id="tabLeaderboardBtn" onclick="switchTab('leaderboard')">📊 生涯總榜</div>
     <div class="tab-btn" id="tabHistoryBtn" onclick="switchTab('history')">📜 歷場戰報</div>
-    <div class="tab-btn" id="tabRosterBtn" onclick="switchTab('roster')">⚙️ 選手後台</div>
+    <div class="tab-btn" id="tabRosterBtn" onclick="switchTab('roster')">⚙️ 選手管理</div>
   </div>
 
-  <!-- 頁面 1：當場場次總結算 -->
+  <!-- 分頁 1：當場場次總結算 -->
   <div id="pageSettle">
     <div class="session-banner">
       <div>
@@ -197,7 +264,8 @@
           <span id="homeTagBadge" style="color:var(--gold); font-size:12px;">🏠 主場 (計東)</span>
         </div>
 
-        <div style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <!-- 場次實際總將數 (與個人將數分開) -->
+        <div style="background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #334155; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <b style="color:#fff; font-size:14px;">🀄 本場實際牌局總將數：</b>
             <span style="font-size:11px; color:var(--text-muted); display:block;">(例如6人輪替共打3將，此處填 3，下方填每人出賽2將)</span>
@@ -209,19 +277,21 @@
           請輸入各出賽選手手頭最終籌碼淨勝分 (贏寫正分、輸寫負分) 及個人實際出賽將數：
         </p>
 
-        <table class="settle-table">
-          <thead>
-            <tr>
-              <th>出賽選手</th>
-              <th>個人將數</th>
-              <th>籌碼淨勝分</th>
-            </tr>
-          </thead>
-          <tbody id="settleInputRows"></tbody>
-        </table>
+        <div class="table-container">
+          <table class="settle-table">
+            <thead>
+              <tr>
+                <th>出賽選手</th>
+                <th>個人將數</th>
+                <th>籌碼淨勝分</th>
+              </tr>
+            </thead>
+            <tbody id="settleInputRows"></tbody>
+          </table>
+        </div>
 
         <!-- 東哥獨立輸入欄位 -->
-        <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5;">
+        <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
               <b style="color:var(--gold); font-size:14px;">💰 東池總實收積分：</b>
@@ -232,7 +302,7 @@
         </div>
 
         <!-- 籌碼平衡檢核 -->
-        <div style="margin-top:14px; padding:10px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+        <div style="margin-top:14px; padding:12px; border-radius:8px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <span style="font-size:12px; color:var(--text-muted);">含東哥全場合計：</span>
             <b id="checkSumDisplay" style="font-size:18px; font-family:monospace;">0</b>
@@ -248,11 +318,11 @@
     </div>
   </div>
 
-  <!-- 頁面 2：東哥金庫 -->
+  <!-- 分頁 2：東哥金庫 -->
   <div id="pageVault" style="display: none;">
     <div class="card" style="background:linear-gradient(135deg, #064e3b, #0f172a); border-color:#059669;">
       <div class="card-title">
-        <span style="color:#fff;">🛠️ 麻將桌椅硬體回本進度 (目標 1800 點 / 36000元)</span>
+        <span style="color:#fff;">🛠️ 麻將桌椅硬體回本進度 (目標 1800 點)</span>
         <span id="hardwareStatusBadge" style="font-size:14px; color:var(--win); font-weight:bold;">0%</span>
       </div>
       <div class="progress-bar-bg">
@@ -285,7 +355,7 @@
     </div>
   </div>
 
-  <!-- 頁面 3：選手獨立專頁 -->
+  <!-- 分頁 3：選手獨立專頁 -->
   <div id="pagePlayerDetail" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -318,22 +388,22 @@
     </div>
   </div>
 
-  <!-- 頁面 4：生涯總榜 -->
+  <!-- 分頁 4：生涯總榜 -->
   <div id="pageLeaderboard" style="display: none;">
     <div class="card">
       <div class="card-title">
         <span>🏆 聯賽選手時時總積分排行榜 (純牌技較量)</span>
         <span id="totalLeagueMatchesCountDisplay" style="font-size: 12px; color: var(--gold);">累計：0 場 / 0 將</span>
       </div>
-      <div class="stats-table-wrapper">
-        <table class="stats-table">
+      <div class="table-container">
+        <table class="settle-table">
           <thead>
             <tr>
               <th>名次</th>
               <th>選手</th>
               <th>總積分</th>
               <th>出賽場數</th>
-              <th>個人出賽總將數</th>
+              <th>出賽總將數</th>
               <th>場勝率</th>
             </tr>
           </thead>
@@ -343,7 +413,7 @@
     </div>
   </div>
 
-  <!-- 頁面 5：歷場戰報 -->
+  <!-- 分頁 5：歷場戰報 -->
   <div id="pageHistory" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -354,13 +424,13 @@
     </div>
   </div>
 
-  <!-- 頁面 6：選手後台 -->
+  <!-- 分頁 6：選手管理 -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
       <div style="display: flex; gap: 8px;">
-        <input type="text" id="newPlayerNameInput" placeholder="輸入新選手名稱..." style="flex: 1; padding: 8px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; color: #fff;">
-        <button class="btn-submit" style="width: 100px; padding: 8px;" onclick="addNewPlayer()">新增</button>
+        <input type="text" id="newPlayerNameInput" placeholder="輸入新選手名稱..." style="flex: 1; padding: 10px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; color: #fff;">
+        <button class="btn-submit" style="width: 100px;" onclick="addNewPlayer()">新增</button>
       </div>
     </div>
     <div class="card">
@@ -377,11 +447,11 @@
 <div class="modal-overlay" id="startSessionModal">
   <div class="modal">
     <div class="modal-header">
-      <span>🚀 開啟新場次聚會</span>
-      <span style="cursor: pointer; font-size: 18px;" onclick="closeStartSessionModal()">✕</span>
+      <span style="font-weight:bold; font-size:16px;">🚀 開啟新場次聚會</span>
+      <span style="cursor: pointer; font-size: 20px;" onclick="closeStartSessionModal()">✕</span>
     </div>
     <div class="form-row">
-      <label>📅 牌局日期 (可自由調整補記)：</label>
+      <label>📅 牌局日期：</label>
       <input type="date" id="modalSessionDateInput">
     </div>
     <div class="form-row">
@@ -389,26 +459,33 @@
       <input type="text" id="modalSessionNameInput">
     </div>
     
-    <div class="form-row" style="background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
+    <div class="form-row" style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #4f46e5; margin:12px 0;">
       <label style="color:#fff; font-weight:bold; display:flex; align-items:center; cursor:pointer;">
-        <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:20px; height:20px; margin-right:8px;">
+        <input type="checkbox" id="modalSessionIsHomeCheckbox" checked style="width:22px; height:22px; margin-right:10px;">
         🏠 在主場打牌 (計算東錢池與硬體攤提)
       </label>
     </div>
 
     <div class="form-row">
       <label style="font-weight:bold; color:#fff;">勾選今日到場打牌之選手 (4~8人)：</label>
-      <div id="modalRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px;"></div>
+      <div id="modalRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:8px;"></div>
     </div>
 
-    <div style="display: flex; gap: 8px; margin-top: 14px;">
+    <div style="display: flex; gap: 8px; margin-top: 16px;">
       <button class="btn-submit" style="flex: 1;" onclick="confirmStartSession()">確認開場</button>
       <button class="btn-action-alt" style="width: 80px;" onclick="closeStartSessionModal()">取消</button>
     </div>
   </div>
 </div>
 
+<!-- 核心業務邏輯腳本：完全本地優先，零阻塞 -->
 <script>
+  const ADMIN_PASSWORD = "3333";
+  const AUTH_KEY = "BEEBEE_ADMIN_AUTH_PERM_V2";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_FINAL_ROBUST";
+  const HARDWARE_TARGET = 1800;
+  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
+
   const firebaseConfig = {
     apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
     authDomain: "beebee-mj.firebaseapp.com",
@@ -418,9 +495,6 @@
     messagingSenderId: "455969527844",
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_FINAL_STABLE";
-  const HARDWARE_TARGET = 1800;
-  const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
 
   function createCleanDB() {
     const stats = {};
@@ -428,7 +502,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 27,
+      version: 28,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -443,7 +517,32 @@
   let viewingPlayerDetailName = null;
   let dbRef = null;
 
-  function initAppPipeline() {
+  // 1. 驗證與免重複登入
+  function checkAuth() {
+    const isAuth = localStorage.getItem(AUTH_KEY) === "true";
+    const lock = document.getElementById("lockScreen");
+    if (isAuth) {
+      if (lock) lock.style.display = "none";
+    } else {
+      if (lock) lock.style.display = "flex";
+    }
+  }
+
+  function verifyPassword() {
+    const inputEl = document.getElementById("inputAdminPassword");
+    const pwd = inputEl ? inputEl.value.trim() : "";
+    if (pwd === ADMIN_PASSWORD) {
+      localStorage.setItem(AUTH_KEY, "true");
+      const lock = document.getElementById("lockScreen");
+      if (lock) lock.style.display = "none";
+    } else {
+      alert("密碼錯誤，請重新輸入！");
+      if (inputEl) inputEl.value = "";
+    }
+  }
+
+  // 2. 本地管線先載入，絕不等待網路
+  function initDataPipeline() {
     const local = localStorage.getItem(LOCAL_CACHE_KEY);
     if (local) {
       try {
@@ -452,36 +551,37 @@
     }
     renderAllLocal();
 
-    try {
-      if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        if (!firebase.apps || firebase.apps.length === 0) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        dbRef = firebase.database().ref("league_data");
-        dbRef.on("value", snapshot => {
-          try {
-            const val = snapshot.val();
-            if (val && val.version >= 27) {
-              DB = val;
-              localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
-              renderAllLocal();
-            } else {
-              saveDBToCloud();
-            }
-          } catch(e) {
-            console.error("Snapshot 解析異常：", e);
+    // 背景異步連接 Firebase，成功則覆蓋並重繪，失敗則靜默保持本地運行
+    setTimeout(() => {
+      try {
+        if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+          if (!firebase.apps || firebase.apps.length === 0) {
+            firebase.initializeApp(firebaseConfig);
           }
-        });
+          dbRef = firebase.database().ref("league_data");
+          dbRef.on("value", snapshot => {
+            try {
+              const val = snapshot.val();
+              if (val && val.version >= 28) {
+                DB = val;
+                localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+                renderAllLocal();
+              } else {
+                saveDBToCloud();
+              }
+            } catch(e) {}
+          });
+        }
+      } catch(err) {
+        console.warn("Firebase 背景連接失敗，保持本機運行：", err);
       }
-    } catch(err) {
-      console.warn("啟用離線本機模式：", err);
-    }
+    }, 500);
   }
 
   function saveDBToCloud() {
     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
     if (dbRef) {
-      dbRef.set(DB).catch(err => console.error("雲端同步失敗", err));
+      dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
     }
   }
 
@@ -520,9 +620,9 @@
 
     const container = document.getElementById("modalRosterCheckboxes");
     container.innerHTML = (DB.roster || DEFAULT_ROSTER).map(name => `
-      <label style="display:flex; align-items:center; background:#1e293b; padding:8px; border-radius:6px; cursor:pointer;">
-        <input type="checkbox" value="${name}" class="roster-chk" checked style="width:18px; height:18px; margin-right:6px;">
-        ${name}
+      <label style="display:flex; align-items:center; background:#0f172a; padding:10px; border-radius:8px; cursor:pointer;">
+        <input type="checkbox" value="${name}" class="roster-chk" checked style="width:20px; height:20px; margin-right:8px;">
+        <span style="font-weight:bold; font-size:14px;">${name}</span>
       </label>
     `).join("");
 
@@ -944,10 +1044,10 @@
           <div class="session-archive-header">
             <div>
               <b style="color:#fff;">📁 ${sess.name}</b>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || sess.maxMatches} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || 1} 將)</span>
               ${dongBadge}
             </div>
-            <button class="btn-action-alt btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
+            <button class="btn-action-alt btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteArchivedSession(${sIdx})">刪除場次</button>
           </div>
           <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
             ${resultsHtml} ${sess.totalDong > 0 ? `<br><span style="color:var(--gold); font-size:12px;">💰 東池實收：+${sess.totalDong} 點 (硬體攤提 +${sess.allocatedHardware \vert{}\vert{} 0} ｜ 東哥純益 +${sess.allocatedDong || 0})</span>` : ''}
@@ -978,7 +1078,7 @@
       DB.vault.logs = (DB.vault.logs || []).filter(l => l.sessionName !== sess.name);
     }
 
-    DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - (sess.sessionTotalMatches || sess.maxMatches || 1));
+    DB.totalLeagueMatches = Math.max(0, (DB.totalLeagueMatches || 1) - (sess.sessionTotalMatches || 1));
     DB.archivedSessions.splice(sIdx, 1);
 
     renderAllLocal();
@@ -1062,16 +1162,23 @@
     saveDBToCloud();
   }
 
-  // 頁面就緒檢核
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      checkAuth();
-      initAppPipeline();
-    });
-  } else {
+  // 立即綁定事件，防止手機事件失效
+  window.addEventListener("DOMContentLoaded", () => {
     checkAuth();
-    initAppPipeline();
-  }
+    initDataPipeline();
+
+    // 實體按鍵監聽
+    const btnLogin = document.getElementById("btnLogin");
+    if (btnLogin) {
+      btnLogin.addEventListener("click", verifyPassword);
+    }
+    const inputPwd = document.getElementById("inputAdminPassword");
+    if (inputPwd) {
+      inputPwd.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.keyCode === 13) verifyPassword();
+      });
+    }
+  });
 </script>
 </body>
 </html>
