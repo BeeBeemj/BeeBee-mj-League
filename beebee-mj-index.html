@@ -85,11 +85,10 @@
     </div>
   </div>
 
-  <!-- 2. 榮譽榜 (升級同分裁決機制) -->
+  <!-- 2. 榮譽榜 -->
   <div class="card">
     <div class="card-title">
       <span>👑 聯賽數據榮譽榜</span>
-      <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
     </div>
     <div class="awards-grid" id="awardsContainer"></div>
   </div>
@@ -108,7 +107,7 @@
             <th>選手</th>
             <th>總積分</th>
             <th>出賽場數</th>
-            <th>出賽總將數</th>
+            <th>個人出賽總將數</th>
             <th>場勝率</th>
           </tr>
         </thead>
@@ -293,7 +292,7 @@
     const stats = (DB.playerStats && DB.playerStats[name]) ? DB.playerStats[name] : { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0 };
 
     document.getElementById("pubDetailName").innerText = name;
-    document.getElementById("pubDetailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 共 ${stats.matchesPlayed} 將`;
+    document.getElementById("pubDetailSub").innerText = `出賽 ${stats.sessionsPlayed} 場 ｜ 個人出賽 ${stats.matchesPlayed} 將`;
     const scoreEl = document.getElementById("pubDetailScore");
     scoreEl.innerText = stats.totalScore > 0 ? `+${stats.totalScore}` : stats.totalScore;
     scoreEl.style.color = stats.totalScore >= 0 ? "var(--win)" : "var(--lose)";
@@ -325,7 +324,7 @@
       <div style="background:#1e293b; border:1px solid #334155; border-radius:6px; padding:8px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
         <div>
           <b>${item.title}</b>
-          <span style="font-size:11px; color:var(--text-muted); display:block;">出賽 ${item.matches} 將</span>
+          <span style="font-size:11px; color:var(--text-muted); display:block;">個人出賽 ${item.matches} 將</span>
         </div>
         <span style="color:${item.score >= 0 ? 'var(--win)' : 'var(--lose)'}; font-weight:bold; font-family:monospace; font-size:15px;">
           ${item.score >= 0 ? '+'+item.score : item.score}
@@ -364,31 +363,26 @@
     `;
   }
 
-  // --- 關鍵修改：榮譽榜嚴格同分裁決機制 (Tie-breaker) ---
   function renderAwards(players, sessions) {
     if (!players || players.length === 0) return;
 
-    // 1. 總積分王：總積分最高 -> 勝場數最多
     const topScore = [...players].sort((a, b) => {
       if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
       return b.winsCount - a.winsCount;
     })[0];
 
-    // 2. 奪冠王：單場第一名最多 -> 總積分最高 -> 出賽場數少(效率高)
     const topWins = [...players].sort((a, b) => {
       if (b.winsCount !== a.winsCount) return b.winsCount - a.winsCount;
       if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
       return a.sessionsPlayed - b.sessionsPlayed;
     })[0];
 
-    // 3. 不敗戰神：正分勝率最高 -> 總勝場數最多 -> 總積分最高
     const topWinRate = [...players].sort((a, b) => {
       if (b.winRateNum !== a.winRateNum) return b.winRateNum - a.winRateNum;
       if (b.winsCount !== a.winsCount) return b.winsCount - a.winsCount;
       return b.totalScore - a.totalScore;
     })[0];
 
-    // 4. 單場爆發王：歷史單日最高得分 -> 總積分最高
     let bestSingleScore = 0;
     let bestSinglePlayer = "尚無";
     let bestSingleSession = "";
@@ -407,12 +401,12 @@
       <div class="award-card full-width">
         <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
-        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ ${topScore.matchesPlayed} 將 ｜ 拿下 ${topScore.winsCount} 次單場冠軍</div>
+        <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人共打了 ${topScore.matchesPlayed} 將 ｜ 拿下 ${topScore.winsCount} 次單場冠軍</div>
       </div>
       <div class="award-card">
         <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
         <div class="award-player">${topWins.name}</div>
-        <div class="award-stat">單場第一：<b>${topWins.winsCount}</b> 次 (勝率同分比序最高)</div>
+        <div class="award-stat">單場第一：<b>${topWins.winsCount}</b> 次</div>
       </div>
       <div class="award-card">
         <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
@@ -441,19 +435,17 @@
     container.innerHTML = sessions.map(sess => {
       const resultsHtml = (sess.results || []).map(r => {
         const color = r.finalScore > 0 ? 'var(--win)' : (r.finalScore < 0 ? 'var(--lose)' : 'var(--text-muted)');
-        return `
-          <span>${r.name}: <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>
-        `;
+        return `<span>${r.name}(${r.matchesPlayed}將): <b style="color:${color};">${r.finalScore > 0 ? '+'+r.finalScore : r.finalScore}</b></span>`;
       }).join(" ｜ ");
 
-      const dongHtml = (sess.totalDong > 0) ? `<br><span style="color:var(--gold); font-size:12px;">💰 東哥：+${sess.totalDong} 點</span>` : '';
+      const dongHtml = (sess.totalDong > 0) ? `<br><span style="color:var(--gold); font-size:12px;">💰 東池實收：+${sess.totalDong} 點</span>` : '';
 
       return `
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
               <b style="color:#fff;">📁 ${sess.name}</b>
-              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ ${sess.maxMatches} 將)</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">(${sess.date} ｜ 全場打 ${sess.sessionTotalMatches || sess.maxMatches} 將)</span>
             </div>
           </div>
           <div style="padding:10px 12px; font-size:13px; line-height:1.6; background:#0b1120;">
