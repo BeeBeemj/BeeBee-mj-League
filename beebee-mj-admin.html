@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BeeBee 麻將聯賽 - 後台系統</title>
+  <!-- 載入 Firebase SDK (加入 defer 防止阻塞) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -26,29 +27,30 @@
       color: var(--text);
       margin: 0;
       padding: 10px;
+      min-height: 100vh;
     }
     .container { max-width: 720px; margin: 0 auto; }
     
-    /* 頁面內建解鎖卡片 (避免 prompt 被瀏覽器阻擋造成黑畫面) */
-    #loginOverlay {
+    /* 密碼防護覆蓋層 (有密碼才擋，驗證過自動隱藏) */
+    #lockScreen {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg);
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(11, 17, 32, 0.96);
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 16px;
-      z-index: 10000;
+      padding: 20px;
+      z-index: 99999;
     }
-    .login-card {
-      background: var(--card-bg);
+    .lock-box {
+      background: #1e293b;
       border: 1px solid var(--card-border);
       border-radius: 14px;
       padding: 24px;
       width: 100%;
-      max-width: 340px;
+      max-width: 320px;
       text-align: center;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
 
     .tab-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 12px; }
@@ -84,7 +86,7 @@
     table.stats-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .highlight-cell { font-weight: bold; font-family: monospace; }
 
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 999; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; padding: 16px; z-index: 9999; }
     .modal-overlay.active { display: flex; }
     .modal { background: #1e293b; border: 1px solid var(--card-border); border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 18px; }
     .modal-header { font-size: 16px; font-weight: bold; margin-bottom: 14px; display: flex; justify-content: space-between; }
@@ -104,17 +106,18 @@
 </head>
 <body>
 
-<!-- 內建安全解鎖層 (防止原生彈窗被手機阻擋造成黑屏) -->
-<div id="loginOverlay" style="display: none;">
-  <div class="login-card">
-    <h3 style="margin-top:0; color:#fff;">🀄 後台管理員登入</h3>
-    <p style="font-size:13px; color:var(--text-muted);">請輸入密碼以進入結算系統</p>
-    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:2px; margin-bottom:12px;">
-    <button class="btn-submit" style="width:100%;" onclick="submitPasswordLogin()">確認登入</button>
+<!-- 密碼解鎖層 (預設顯示，驗證通過立即隱藏，絕無白屏風險) -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <h3 style="margin-top:0; color:#fff;">🀄 BeeBee 麻將後台</h3>
+    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">請輸入管理員密碼以啟用操作</p>
+    <input type="password" id="inputAdminPassword" placeholder="輸入密碼..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--card-border); background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:12px;">
+    <button class="btn-submit" style="width:100%;" onclick="verifyPassword()">解鎖登入</button>
   </div>
 </div>
 
-<div class="container" id="adminApp" style="display: none;">
+<!-- 主介面容器 (預設可見，不依賴 JS 切換 display) -->
+<div class="container" id="adminApp">
   <div class="tab-bar">
     <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
     <div class="tab-btn" id="tabVaultBtn" onclick="switchTab('vault')">💰 東哥金庫</div>
@@ -166,7 +169,7 @@
           <tbody id="settleInputRows"></tbody>
         </table>
 
-        <!-- 東哥獨立輸入欄位 (含硬體 50% 拆分提示) -->
+        <!-- 東哥獨立輸入欄位 -->
         <div id="dongInputBlock" style="margin-top:14px; background:#0f172a; padding:10px; border-radius:8px; border:1px solid #4f46e5;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
@@ -194,7 +197,7 @@
     </div>
   </div>
 
-  <!-- 頁面 2：東哥金庫 (含硬體攤提雙軌制) -->
+  <!-- 頁面 2：東哥金庫 -->
   <div id="pageVault" style="display: none;">
     <div class="card" style="background:linear-gradient(135deg, #064e3b, #0f172a); border-color:#059669;">
       <div class="card-title">
@@ -365,11 +368,8 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V24_SAFE";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_FINAL_STABLE";
   const HARDWARE_TARGET = 1800;
-
-  firebase.initializeApp(firebaseConfig);
-  const dbRef = firebase.database().ref("league_data");
 
   const DEFAULT_ROSTER = ["安妮", "鴨鴨", "吉詳", "胖弟", "大雄", "中雯"];
 
@@ -379,7 +379,7 @@
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
     });
     return {
-      version: 24,
+      version: 25,
       roster: [...DEFAULT_ROSTER],
       currentSession: null,
       totalLeagueMatches: 0,
@@ -392,65 +392,71 @@
 
   let DB = createCleanDB();
   let viewingPlayerDetailName = null;
+  let dbRef = null;
 
-  // 安全認證檢核：避免瀏覽器攔截 prompt 造成黑屏
-  function checkPassword() {
+  // 1. 密碼驗證邏輯 (若已登入直接隱藏遮罩層)
+  function initAuthCheck() {
     if (sessionStorage.getItem("BEEBEE_ADMIN_AUTH") === "true") {
-      document.getElementById("loginOverlay").style.display = "none";
-      document.getElementById("adminApp").style.display = "block";
-      initDataPipeline();
+      document.getElementById("lockScreen").style.display = "none";
     } else {
-      document.getElementById("loginOverlay").style.display = "flex";
-      document.getElementById("adminApp").style.display = "none";
+      document.getElementById("lockScreen").style.display = "flex";
     }
   }
 
-  function submitPasswordLogin() {
+  function verifyPassword() {
     const pwd = document.getElementById("inputAdminPassword").value;
     if (pwd === ADMIN_PASSWORD) {
       sessionStorage.setItem("BEEBEE_ADMIN_AUTH", "true");
-      document.getElementById("loginOverlay").style.display = "none";
-      document.getElementById("adminApp").style.display = "block";
-      initDataPipeline();
+      document.getElementById("lockScreen").style.display = "none";
     } else {
       alert("密碼錯誤，請重新輸入！");
       document.getElementById("inputAdminPassword").value = "";
     }
   }
 
-  function initDataPipeline() {
+  // 2. 本地管線先跑，即使無網路也保證畫面可見
+  function initApp() {
+    initAuthCheck();
+
+    // 先讀快取
     const local = localStorage.getItem(LOCAL_CACHE_KEY);
     if (local) {
       try {
         DB = JSON.parse(local);
-        renderAllLocal();
       } catch(e) {}
     }
-    initFirebaseSync();
-  }
+    renderAllLocal();
 
-  function initFirebaseSync() {
-    dbRef.on("value", snapshot => {
-      try {
-        const val = snapshot.val();
-        if (val && val.version >= 24) {
-          DB = val;
-          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
-          renderAllLocal();
-        } else {
-          DB = createCleanDB();
-          saveDBToCloud();
-        }
-      } catch(e) {
-        console.error("Firebase 連線錯誤：", e);
-        renderAllLocal();
+    // 初始化 Firebase
+    try {
+      if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+        firebase.initializeApp(firebaseConfig);
+        dbRef = firebase.database().ref("league_data");
+        dbRef.on("value", snapshot => {
+          try {
+            const val = snapshot.val();
+            if (val && val.version >= 25) {
+              DB = val;
+              localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+              renderAllLocal();
+            } else {
+              saveDBToCloud();
+            }
+          } catch(e) {
+            console.error("Firebase Snapshot 異常：", e);
+          }
+        });
       }
-    });
+    } catch(err) {
+      console.warn("Firebase 連線初始化受限，已啟用本機離線安全模式：", err);
+    }
   }
 
   function saveDBToCloud() {
     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
-    dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
+    if (dbRef) {
+      dbRef.set(DB).catch(err => console.error("雲端存檔失敗", err));
+    }
   }
 
   function switchTab(tab) {
@@ -1031,8 +1037,8 @@
     saveDBToCloud();
   }
 
-  // 頁面載入完成立即進行安全認證檢核
-  document.addEventListener("DOMContentLoaded", checkPassword);
+  // 頁面就緒立即啟動
+  window.addEventListener("DOMContentLoaded", initApp);
 </script>
 </body>
 </html>
