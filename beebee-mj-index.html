@@ -92,7 +92,7 @@
     .btn-pill.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .trend-chart-box { width: 100%; height: 150px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
 
-    /* 台數表與爭議表格專用樣式 */
+    /* 表格與爭議條款專用樣式 */
     .rule-table {
       width: 100%;
       border-collapse: collapse;
@@ -118,6 +118,33 @@
       background: #1e1b4b;
       color: var(--gold);
       border: 1px solid #4338ca;
+    }
+
+    /* 爭議說明補充方塊 */
+    .dispute-section-title {
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--primary);
+      margin: 16px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dispute-box {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .dispute-item-title {
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 4px;
     }
   </style>
 </head>
@@ -290,12 +317,45 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 爭議補充條款 1：碰牌權消滅時機判定 -->
+      <div class="dispute-section-title">
+        <span>🛑 麻將碰牌權消滅時機判定</span>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">1. 吃牌 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 吃進 ＋ 捨牌落地（兩步驟皆完成）。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 吃牌者還沒完成吃牌+捨牌，隨時都能喊碰。</div>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">2. 一般摸牌 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 摸牌者摸牌到打出廢牌落地。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 摸牌者就算已經把牌插進手裡選牌，只要廢牌還沒打到桌上，碰牌者都能喊碰，摸牌者把牌放回牌牆。</div>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">3. 自摸 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 摸牌者手不離牌，直接在桌面翻開亮牌。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 摸牌－看牌－亮牌，就算自摸生效。</div>
+      </div>
+
+      <!-- 爭議補充條款 2：自摸判定細則 -->
+      <div class="dispute-section-title">
+        <span>✨ 自摸判定細則</span>
+      </div>
+      <div class="dispute-box" style="border-left: 3px solid var(--gold);">
+        <div>不立不靠不掉不離手即可，不鼓勵碰到牌尺或桌框，但會給過。</div>
+        <div style="color:var(--win); font-weight:bold; margin-top:4px;">
+          📌 基本上僅嚴格執行「不離手」、「不靠入手牌」。
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-  // 頁籤切換
   function switchMainTab(tab) {
     document.getElementById("viewBoard").style.display = (tab === 'board') ? 'block' : 'none';
     document.getElementById("viewTai").style.display = (tab === 'tai') ? 'block' : 'none';
