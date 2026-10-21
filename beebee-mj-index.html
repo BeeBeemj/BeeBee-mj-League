@@ -28,6 +28,32 @@
       padding: 12px;
     }
     .container { max-width: 680px; margin: 0 auto; }
+    
+    /* 頂部導覽頁籤 */
+    .nav-tab-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .nav-tab-btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 10px 4px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .nav-tab-btn.active {
+      background: var(--primary);
+      color: #0b1120;
+      border-color: var(--primary);
+    }
+
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .card-title { font-size: 15px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
@@ -65,92 +91,221 @@
     }
     .btn-pill.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .trend-chart-box { width: 100%; height: 150px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
+
+    /* 台數表與爭議表格專用樣式 */
+    .rule-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .rule-table th, .rule-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--card-border);
+      text-align: left;
+    }
+    .rule-table th {
+      background: #0f172a;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .tai-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-family: monospace;
+      font-size: 12px;
+      background: #1e1b4b;
+      color: var(--gold);
+      border: 1px solid #4338ca;
+    }
   </style>
 </head>
 <body>
 <div class="container">
   <div style="text-align: center; margin-bottom: 14px;">
-    <h2 style="margin: 0 0 4px 0;">🀄 BeeBee 麻將聯賽即時戰報</h2>
+    <h2 style="margin: 0 0 4px 0;">🀄 BeeBee 麻將聯賽</h2>
     <div style="font-size: 12px; color: var(--text-muted);">
-      <span class="live-dot"></span> 雲端連線即時動態同步
+      <span class="live-dot"></span> 雲端連線即時同步中
     </div>
   </div>
 
-  <!-- 1. 今日聚會即時動態 -->
-  <div class="today-live-box" id="todaySessionSection">
-    <div class="idle-box">
-      <span class="idle-emoji">🀄🍵</span>
-      <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
-      <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
-    </div>
+  <!-- 頂部頁籤切換鈕 -->
+  <div class="nav-tab-bar">
+    <div class="nav-tab-btn active" id="tabBtnBoard" onclick="switchMainTab('board')">📊 戰報與排行</div>
+    <div class="nav-tab-btn" id="tabBtnTai" onclick="switchMainTab('tai')">🀄 台數表</div>
+    <div class="nav-tab-btn" id="tabBtnDispute" onclick="switchMainTab('dispute')">⚖️ 爭議規則</div>
   </div>
 
-  <!-- 2. 榮譽榜 -->
-  <div class="card">
-    <div class="card-title">
-      <span>👑 聯賽數據榮譽榜</span>
-      <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
-    </div>
-    <div class="awards-grid" id="awardsContainer"></div>
-  </div>
-
-  <!-- 3. 生涯總積分榜 (只呈現前台可見選手) -->
-  <div class="card">
-    <div class="card-title">
-      <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
-      <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
-    </div>
-    <div class="stats-table-wrapper">
-      <table class="stats-table">
-        <thead>
-          <tr>
-            <th>名次</th>
-            <th>選手</th>
-            <th>總積分</th>
-            <th>出賽場數</th>
-            <th>個人總將數</th>
-            <th>場勝率</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboardBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 4. 選手個人專頁 (走勢與歷場戰績) -->
-  <div class="card">
-    <div class="card-title">
-      <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
-    </div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;" id="publicPlayerPills"></div>
-    <div id="publicPlayerDetailBox" style="display:none; background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border);">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <b style="font-size:17px; color:#fff;" id="pubDetailName">選手</b>
-          <span style="font-size:12px; color:var(--text-muted); display:block;" id="pubDetailSub">總戰績</span>
-        </div>
-        <div style="text-align:right;">
-          <span style="font-size:11px; color:var(--text-muted); display:block;">累積淨勝點數</span>
-          <span style="font-size:22px; font-weight:900; font-family:monospace;" id="pubDetailScore">0</span>
-        </div>
+  <!-- ================= 頁籤 1：即時戰報與排行 ================= -->
+  <div id="viewBoard">
+    <!-- 今日聚會即時動態 -->
+    <div class="today-live-box" id="todaySessionSection">
+      <div class="idle-box">
+        <span class="idle-emoji">🀄🍵</span>
+        <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
+        <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
       </div>
-      <div class="trend-chart-box" id="pubTrendChartBox"></div>
-      <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場出賽紀錄：</div>
-      <div id="pubDetailMatchList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
+    </div>
+
+    <!-- 榮譽榜 -->
+    <div class="card">
+      <div class="card-title">
+        <span>👑 聯賽數據榮譽榜</span>
+        <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
+      </div>
+      <div class="awards-grid" id="awardsContainer"></div>
+    </div>
+
+    <!-- 生涯總積分榜 -->
+    <div class="card">
+      <div class="card-title">
+        <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
+        <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>名次</th>
+              <th>選手</th>
+              <th>總積分</th>
+              <th>出賽場數</th>
+              <th>出賽總將數</th>
+              <th>場勝率</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 選手個人專頁 -->
+    <div class="card">
+      <div class="card-title">
+        <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;" id="publicPlayerPills"></div>
+      <div id="publicPlayerDetailBox" style="display:none; background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <b style="font-size:17px; color:#fff;" id="pubDetailName">選手</b>
+            <span style="font-size:12px; color:var(--text-muted); display:block;" id="pubDetailSub">總戰績</span>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:11px; color:var(--text-muted); display:block;">累積淨勝點數</span>
+            <span style="font-size:22px; font-weight:900; font-family:monospace;" id="pubDetailScore">0</span>
+          </div>
+        </div>
+        <div class="trend-chart-box" id="pubTrendChartBox"></div>
+        <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場出賽紀錄：</div>
+        <div id="pubDetailMatchList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
+      </div>
+    </div>
+
+    <!-- 歷場戰報 -->
+    <div class="card">
+      <div class="card-title">
+        <span>📜 歷場完賽戰報</span>
+        <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
+      </div>
+      <div id="archivedSessionsContainer"></div>
     </div>
   </div>
 
-  <!-- 5. 歷場戰報 (純勝負，無東哥) -->
-  <div class="card">
-    <div class="card-title">
-      <span>📜 歷場完賽戰報</span>
-      <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
+  <!-- ================= 頁籤 2：台數表 ================= -->
+  <div id="viewTai" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>🀄 台灣十六張麻將 - 聯賽正規台數表</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="rule-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">牌型 / 規則</th>
+              <th style="width: 20%;">台數</th>
+              <th>說明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><b>天胡</b></td><td><span class="tai-badge">24 台</span></td><td>莊家起手即胡。</td></tr>
+            <tr><td><b>天聽</b></td><td><span class="tai-badge">16 台</span></td><td>起手聽牌，包含莊家開門；海內沒半張牌即聽牌。</td></tr>
+            <tr><td><b>大四喜</b></td><td><span class="tai-badge">16 台</span></td><td>四組風牌刻/槓。</td></tr>
+            <tr><td><b>字一色</b></td><td><span class="tai-badge">16 台</span></td><td>全由字牌組成。</td></tr>
+            <tr><td><b>MIGI</b></td><td><span class="tai-badge">8 台</span></td><td>八張內無吃碰且聽牌；嗆 MIGI 卻沒聽牌，詐 MI 則包。</td></tr>
+            <tr><td><b>大三元</b></td><td><span class="tai-badge">8 台</span></td><td>中發白三組刻/槓。</td></tr>
+            <tr><td><b>小四喜</b></td><td><span class="tai-badge">8 台</span></td><td>三組風牌刻/槓加一組風牌眼。</td></tr>
+            <tr><td><b>八仙</b></td><td><span class="tai-badge">8 台</span></td><td>八張花即胡，不需再補牌。</td></tr>
+            <tr><td><b>七搶一</b></td><td><span class="tai-badge">8 台</span></td><td>花胡後牌局結束。</td></tr>
+            <tr><td><b>清一色</b></td><td><span class="tai-badge">8 台</span></td><td>同一門數牌組成。</td></tr>
+            <tr><td><b>五暗刻</b></td><td><span class="tai-badge">8 台</span></td><td>五組暗刻/暗槓。</td></tr>
+            <tr><td><b>四暗刻</b></td><td><span class="tai-badge">5 台</span></td><td>四組暗刻/暗槓。</td></tr>
+            <tr><td><b>湊一色</b></td><td><span class="tai-badge">4 台</span></td><td>同一門數牌加字牌。</td></tr>
+            <tr><td><b>小三元</b></td><td><span class="tai-badge">4 台</span></td><td>兩組三元刻/槓加一組三元眼。</td></tr>
+            <tr><td><b>平胡</b></td><td><span class="tai-badge">2 台</span></td><td>門清有平胡，抓得出眼睛即可。</td></tr>
+            <tr><td><b>三暗刻</b></td><td><span class="tai-badge">2 台</span></td><td>三組暗刻/暗槓。</td></tr>
+            <tr><td><b>門清</b></td><td><span class="tai-badge">1 台</span></td><td>沒有吃碰明槓。</td></tr>
+            <tr><td><b>不求人</b></td><td><span class="tai-badge">1 台</span></td><td>門清自摸。</td></tr>
+            <tr><td><b>全求人</b></td><td><span class="tai-badge">1 台</span></td><td>全靠吃碰後胡別人打出的牌。</td></tr>
+            <tr><td><b>自摸</b></td><td><span class="tai-badge">1 台</span></td><td>不嚴格，不立不靠不掉不離手即可。</td></tr>
+            <tr><td><b>本花</b></td><td><span class="tai-badge">1 台</span></td><td>符合座位本花。</td></tr>
+            <tr><td><b>花槓</b></td><td><span class="tai-badge">2 台</span></td><td>花牌成組。</td></tr>
+            <tr><td><b>本風</b></td><td><span class="tai-badge">1 台</span></td><td>符合該局風位。</td></tr>
+            <tr><td><b>獨聽</b></td><td><span class="tai-badge">1 台</span></td><td>單一聽牌型。</td></tr>
+            <tr><td><b>莊家</b></td><td><span class="tai-badge">1 台</span></td><td>莊家胡牌另計。</td></tr>
+            <tr><td><b>連 N 拉 N</b></td><td><span class="tai-badge">2N 台</span></td><td>依連莊數加計。</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div id="archivedSessionsContainer"></div>
+  </div>
+
+  <!-- ================= 頁籤 3：爭議規則 ================= -->
+  <div id="viewDispute" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>⚖️ DISPUTES - 常見爭議規則與本站裁決</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="rule-table">
+          <thead>
+            <tr>
+              <th style="width: 32%;">情境</th>
+              <th>本站整理規則</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><b>MIGI 兩手內</b></td><td>莊家沒有第三手，計 8 台。</td></tr>
+            <tr><td><b>起手聽牌</b></td><td>算天聽，包含莊家開門，計 16 台。</td></tr>
+            <tr><td><b>八張花</b></td><td>即胡，不需再做補牌動作；花胡後牌局結束。</td></tr>
+            <tr><td><b>門清平胡</b></td><td>門清有平胡，抓得出眼睛即可。</td></tr>
+            <tr><td><b>詐胡</b></td><td>一底五賠三家，莊家另計，莊家續連。</td></tr>
+            <tr><td><b>自摸認定</b></td><td>不嚴格，不立不靠不掉不離手即可。</td></tr>
+            <tr><td><b>吃錯牌</b></td><td>當輪可以拉回；過手後被抓即相公，被抓到倒牌即算詐胡。</td></tr>
+            <tr><td><b>打出的牌</b></td><td>沒離手皆可收回；若離手則不可收回。</td></tr>
+            <tr><td><b>嗆 MIGI 或天聽</b></td><td>若沒聽牌，詐 MI 則包。</td></tr>
+            <tr><td><b>不採用規則</b></td><td>無四槓和、無哩咕，鐵八敦。</td></tr>
+            <tr><td><b>多家胡牌</b></td><td>有三響無兩響；兩響即攔胡。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
+  // 頁籤切換
+  function switchMainTab(tab) {
+    document.getElementById("viewBoard").style.display = (tab === 'board') ? 'block' : 'none';
+    document.getElementById("viewTai").style.display = (tab === 'tai') ? 'block' : 'none';
+    document.getElementById("viewDispute").style.display = (tab === 'dispute') ? 'block' : 'none';
+
+    document.getElementById("tabBtnBoard").classList.toggle("active", tab === 'board');
+    document.getElementById("tabBtnTai").classList.toggle("active", tab === 'tai');
+    document.getElementById("tabBtnDispute").classList.toggle("active", tab === 'dispute');
+  }
+
   const firebaseConfig = {
     apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
     authDomain: "beebee-mj.firebaseapp.com",
@@ -206,7 +361,6 @@
     const rosterList = (DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
     const visibility = DB.playerVisibility || {};
 
-    // 依據後台設定，過濾出「前台可見」的選手
     const visibleRoster = rosterList.filter(name => visibility[name] !== false);
 
     const playerMetrics = visibleRoster.map(name => {
@@ -382,7 +536,6 @@
   function renderAwards(players, sessions) {
     if (!players || players.length === 0) return;
 
-    // 1. 動態重新計算每一場「真正的單場第一名」
     const realWinCounts = {};
     players.forEach(p => { realWinCounts[p.name] = 0; });
 
@@ -395,13 +548,11 @@
       let sessionWinner = null;
 
       (s.results || []).forEach(r => {
-        // 尋找該場次最高分者 (排除純場主)
         if (!r.isHostOnly && r.finalScore > maxScoreInSession) {
           maxScoreInSession = r.finalScore;
           sessionWinner = r.name;
         }
 
-        // 歷史單場爆發王 (單日最高得分)
         if (r.finalScore > bestSingleScore) {
           bestSingleScore = r.finalScore;
           bestSinglePlayer = r.name;
@@ -409,19 +560,16 @@
         }
       });
 
-      // 只有正分且是全場第一名才計入冠軍
       if (sessionWinner && maxScoreInSession > 0) {
         realWinCounts[sessionWinner] = (realWinCounts[sessionWinner] || 0) + 1;
       }
     });
 
-    // 2. 總積分王 (總積分高 -> 勝場多)
     const topScore = [...players].sort((a, b) => {
       if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
       return (realWinCounts[b.name] || 0) - (realWinCounts[a.name] || 0);
     })[0];
 
-    // 3. 奪冠王：依照真正的「單場第一名次數」排序
     const topWins = [...players].sort((a, b) => {
       const winsA = realWinCounts[a.name] || 0;
       const winsB = realWinCounts[b.name] || 0;
@@ -432,7 +580,6 @@
 
     const actualTopWinsCount = realWinCounts[topWins.name] || 0;
 
-    // 4. 不敗戰神：正分勝率最高
     const topWinRate = [...players].sort((a, b) => {
       if (b.winRateNum !== a.winRateNum) return b.winRateNum - a.winRateNum;
       const winsA = realWinCounts[a.name] || 0;
@@ -467,7 +614,6 @@
     document.getElementById("awardsContainer").innerHTML = awardsHtml;
   }
 
-  // 歷場戰報：無任何東哥字樣，只顯示純淨勝負
   function renderArchivedSessions(sessions) {
     const container = document.getElementById("archivedSessionsContainer");
     document.getElementById("matchArchiveCount").innerText = `共 ${sessions.length} 場`;
