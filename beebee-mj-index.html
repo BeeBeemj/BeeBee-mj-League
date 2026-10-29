@@ -170,8 +170,8 @@
     <div class="today-live-box" id="todaySessionSection">
       <div class="idle-box">
         <span class="idle-emoji">🀄🍵</span>
-        <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
-        <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
+        <b style="font-size:16px; color:#fff;">三缺一啦! 快點快點！</b><br>
+        <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，牌咖還沒出生...）</span>
       </div>
     </div>
 
@@ -187,7 +187,7 @@
     <!-- 生涯總積分榜 -->
     <div class="card">
       <div class="card-title">
-        <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
+        <span>🏆 大隊接力 誰是榜一 </span>
         <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
       </div>
       <div class="stats-table-wrapper">
@@ -233,7 +233,7 @@
     <!-- 歷場戰報 -->
     <div class="card">
       <div class="card-title">
-        <span>📜 歷場完賽戰報</span>
+        <span>📜 血淚史 </span>
         <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
       </div>
       <div id="archivedSessionsContainer"></div>
@@ -467,8 +467,8 @@
       container.innerHTML = `
         <div class="idle-box">
           <span class="idle-emoji">🀄🍵</span>
-          <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
-          <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
+          <b style="font-size:16px; color:#fff;">三缺一啦! 快點快點！</b><br>
+          <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，牌咖還沒出生...）</span>
         </div>
       `;
       return;
@@ -695,7 +695,7 @@
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
-              <b style="color:#fff;">📁 ${sess.name}</b>
+              <b style="color:#fff;">⚔️ ${sess.name}</b>
               <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">
                 (${sess.date} ｜ 全場總計: <b style="color:var(--gold);">${sess.sessionTotalMatches || 1} 將</b>)
               </span>
