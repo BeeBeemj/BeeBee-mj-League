@@ -650,22 +650,22 @@
 
     const awardsHtml = `
       <div class="award-card full-width">
-        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
+        <div class="award-title">🏆 榜一殺神 </div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
         <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人 ${topScore.matchesPlayed} 將 ｜ 獲 ${realWinCounts[topScore.name] || 0} 次單場冠軍</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
+        <div class="award-title">🥇 日日旺 (要旺幾天啦!)</div>
         <div class="award-player">${topWins.name}</div>
         <div class="award-stat">單場第一：<b>${actualTopWinsCount}</b> 次</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
+        <div class="award-title">🛡️ 不敗將軍 (沒在負分的)</div>
         <div class="award-player">${topWinRate.name}</div>
         <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (累計 ${topWinRate.winsCount} 場正分)</div>
       </div>
       <div class="award-card full-width">
-        <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>
+        <div class="award-title">⚡ 爆發王 (最殘忍那種)</div>
         <div class="award-player">${bestSinglePlayer} <span style="color:var(--win); font-size:16px;">(+${bestSingleScore} 點)</span></div>
         <div class="award-stat">締造於：${bestSingleSession || '尚無紀錄'}</div>
       </div>
