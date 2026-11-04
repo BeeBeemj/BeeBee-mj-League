@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BeeBee 麻將 - 即時戰報與榮譽榜</title>
+  <title>BeeBee 麻將聯賽 - 即時戰報與榮譽榜</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <style>
@@ -14,8 +14,8 @@
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #38bdf8;
-      --win: #22c55e;
-      --lose: #ef4444;
+      --win: #ef4444;   /* 正分紅字 */
+      --lose: #22c55e;  /* 負分綠字 */
       --gold: #f59e0b;
       --accent: #6366f1;
     }
@@ -29,20 +29,20 @@
     }
     .container { max-width: 680px; margin: 0 auto; }
     
-    /* 頂部導覽頁籤 */
+    /* 頂部 4 個導覽頁籤 */
     .nav-tab-bar {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
       margin-bottom: 14px;
     }
     .nav-tab-btn {
       background: #1e293b;
       border: 1px solid var(--card-border);
       color: var(--text-muted);
-      padding: 10px 4px;
+      padding: 10px 2px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
       cursor: pointer;
       text-align: center;
@@ -56,7 +56,7 @@
 
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .card-title { font-size: 15px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-    .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--win); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: var(--lose); border-radius: 50%; margin-right: 4px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     
     .today-live-box {
@@ -92,59 +92,31 @@
     .btn-pill.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .trend-chart-box { width: 100%; height: 150px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin: 10px 0; }
 
-    /* 表格與爭議條款專用樣式 */
-    .rule-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    .rule-table th, .rule-table td {
-      padding: 10px 8px;
-      border-bottom: 1px solid var(--card-border);
-      text-align: left;
-    }
-    .rule-table th {
-      background: #0f172a;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
+    .rule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rule-table th, .rule-table td { padding: 10px 8px; border-bottom: 1px solid var(--card-border); text-align: left; }
+    .rule-table th { background: #0f172a; color: var(--text-muted); font-size: 12px; }
     .tai-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 800;
-      font-family: monospace;
-      font-size: 12px;
-      background: #1e1b4b;
-      color: var(--gold);
-      border: 1px solid #4338ca;
+      display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 800;
+      font-family: monospace; font-size: 12px; background: #1e1b4b; color: var(--gold); border: 1px solid #4338ca;
     }
 
-    /* 爭議說明補充方塊 */
-    .dispute-section-title {
-      font-size: 14px;
-      font-weight: 900;
-      color: var(--primary);
-      margin: 16px 0 8px 0;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #334155;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .dispute-section-title { font-size: 14px; font-weight: 900; color: var(--primary); margin: 16px 0 8px 0; padding-bottom: 4px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 6px; }
+    .dispute-box { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
+    .dispute-item-title { font-weight: 800; color: var(--gold); margin-bottom: 4px; }
+
+    /* 預約專區切換週控制列 */
+    .week-nav-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px;
     }
-    .dispute-box {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      font-size: 13px;
-      line-height: 1.6;
+    .day-booking-card {
+      background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
     }
-    .dispute-item-title {
-      font-weight: 800;
-      color: var(--gold);
-      margin-bottom: 4px;
+    .day-booking-card.is-today {
+      border-color: var(--primary);
+    }
+    .day-booking-card.has-game {
+      background: #1e293b;
     }
   </style>
 </head>
@@ -157,37 +129,35 @@
     </div>
   </div>
 
-  <!-- 頂部頁籤切換鈕 -->
+  <!-- 頂部頁籤切換鈕 (新增 📅 當週預約) -->
   <div class="nav-tab-bar">
-    <div class="nav-tab-btn active" id="tabBtnBoard" onclick="switchMainTab('board')">📊 戰報與排行</div>
+    <div class="nav-tab-btn active" id="tabBtnBoard" onclick="switchMainTab('board')">📊 戰報排行</div>
+    <div class="nav-tab-btn" id="tabBtnBooking" onclick="switchMainTab('booking')">📅 當週預約</div>
     <div class="nav-tab-btn" id="tabBtnTai" onclick="switchMainTab('tai')">🀄 台數表</div>
     <div class="nav-tab-btn" id="tabBtnDispute" onclick="switchMainTab('dispute')">⚖️ 爭議規則</div>
   </div>
 
   <!-- ================= 頁籤 1：即時戰報與排行 ================= -->
   <div id="viewBoard">
-    <!-- 今日聚會即時動態 -->
     <div class="today-live-box" id="todaySessionSection">
       <div class="idle-box">
         <span class="idle-emoji">🀄🍵</span>
-        <b style="font-size:16px; color:#fff;">三缺一啦! 快點快點！</b><br>
-        <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，牌咖還沒出生...）</span>
+        <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
+        <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
       </div>
     </div>
 
-    <!-- 榮譽榜 -->
     <div class="card">
       <div class="card-title">
-        <span>👑 世界公敵通緝名單 </span>
+        <span>👑 聯賽數據榮譽榜</span>
         <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
       </div>
       <div class="awards-grid" id="awardsContainer"></div>
     </div>
 
-    <!-- 生涯總積分榜 -->
     <div class="card">
       <div class="card-title">
-        <span>🏆 大隊接力 誰是榜一 </span>
+        <span>🏆 選手時時總積分排行榜 (勝率嚴格排序)</span>
         <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
       </div>
       <div class="stats-table-wrapper">
@@ -198,7 +168,7 @@
               <th>選手</th>
               <th>總積分</th>
               <th>出賽場數</th>
-              <th>出賽總將數</th>
+              <th>個人總將數</th>
               <th>場勝率</th>
             </tr>
           </thead>
@@ -207,7 +177,6 @@
       </div>
     </div>
 
-    <!-- 選手個人專頁 -->
     <div class="card">
       <div class="card-title">
         <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
@@ -230,17 +199,43 @@
       </div>
     </div>
 
-    <!-- 歷場戰報 -->
     <div class="card">
       <div class="card-title">
-        <span>📜 血淚史 </span>
+        <span>📜 歷場完賽戰報</span>
         <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
       </div>
       <div id="archivedSessionsContainer"></div>
     </div>
   </div>
 
-  <!-- ================= 頁籤 2：台數表 ================= -->
+  <!-- ================= 頁籤 2：當週預約 (週一 08:00 自動切週) ================= -->
+  <div id="viewBooking" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>📅 當週牌局預約看板</span>
+        <span style="font-size:11px; color:var(--text-muted);">每週一 08:00 自動換週</span>
+      </div>
+
+      <!-- 週切換控制列 -->
+      <div class="week-nav-bar">
+        <button class="btn-pill" onclick="changeWeekOffset(-1)">◀ 上一週</button>
+        <div style="text-align:center;">
+          <b id="currentWeekRangeDisplay" style="color:#fff; font-size:14px;">載入中...</b>
+          <div id="isCurrentWeekBadge" style="font-size:11px; color:var(--gold); margin-top:2px;">(本週)</div>
+        </div>
+        <button class="btn-pill" onclick="changeWeekOffset(1)">下一週 ▶</button>
+      </div>
+
+      <div style="text-align:center; margin-bottom:10px;">
+        <button class="btn-sm" style="background:#1e293b; color:var(--primary); border:1px solid #334155;" onclick="resetToCurrentWeek()">回到本週</button>
+      </div>
+
+      <!-- 週一到週日 每日看板清單 -->
+      <div id="weekDaysScheduleContainer"></div>
+    </div>
+  </div>
+
+  <!-- ================= 頁籤 3：台數表 ================= -->
   <div id="viewTai" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -288,7 +283,7 @@
     </div>
   </div>
 
-  <!-- ================= 頁籤 3：爭議規則 ================= -->
+  <!-- ================= 頁籤 4：爭議規則 ================= -->
   <div id="viewDispute" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -318,7 +313,6 @@
         </table>
       </div>
 
-      <!-- 爭議補充條款 1：碰牌權消滅時機判定 -->
       <div class="dispute-section-title">
         <span>🛑 麻將碰牌權消滅時機判定</span>
       </div>
@@ -341,7 +335,6 @@
         <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 摸牌－看牌－亮牌，就算自摸生效。</div>
       </div>
 
-      <!-- 爭議補充條款 2：自摸判定細則 -->
       <div class="dispute-section-title">
         <span>✨ 自摸判定細則</span>
       </div>
@@ -358,12 +351,16 @@
 <script>
   function switchMainTab(tab) {
     document.getElementById("viewBoard").style.display = (tab === 'board') ? 'block' : 'none';
+    document.getElementById("viewBooking").style.display = (tab === 'booking') ? 'block' : 'none';
     document.getElementById("viewTai").style.display = (tab === 'tai') ? 'block' : 'none';
     document.getElementById("viewDispute").style.display = (tab === 'dispute') ? 'block' : 'none';
 
     document.getElementById("tabBtnBoard").classList.toggle("active", tab === 'board');
+    document.getElementById("tabBtnBooking").classList.toggle("active", tab === 'booking');
     document.getElementById("tabBtnTai").classList.toggle("active", tab === 'tai');
     document.getElementById("tabBtnDispute").classList.toggle("active", tab === 'dispute');
+
+    if (tab === 'booking') renderWeeklyBookingView();
   }
 
   const firebaseConfig = {
@@ -385,6 +382,7 @@
     roster: [...DEFAULT_ROSTER],
     playerVisibility: {},
     playerStats: {},
+    bookings: [],
     currentSession: null,
     totalLeagueMatches: 0,
     archivedSessions: []
@@ -395,6 +393,8 @@
   });
 
   let pubSelectedPlayer = null;
+  let weekOffset = 0; // 週偏移量 (0: 本週, 1: 下週, -1: 上週)
+
   renderAllData(currentDB);
 
   firebase.initializeApp(firebaseConfig);
@@ -405,6 +405,7 @@
       const val = snapshot.val();
       if (val) {
         currentDB = val;
+        if (!currentDB.bookings) currentDB.bookings = [];
         renderAllData(currentDB);
       }
     } catch(err) {
@@ -459,6 +460,114 @@
 
     renderPublicPlayerPills(visibleRoster, DB);
     renderArchivedSessions(DB.archivedSessions || []);
+    if (document.getElementById("viewBooking").style.display === "block") {
+      renderWeeklyBookingView();
+    }
+  }
+
+  // --- 📅 週一早上 08:00 自動換週運算邏輯 ---
+  function getBaseMondayDate() {
+    const now = new Date();
+    // 扣掉 8 小時後的基準日期：若在週一 07:59 前，扣 8 小時即歸屬在「上週日」的週期
+    const adjusted = new Date(now.getTime() - (8 * 60 * 60 * 1000));
+    const day = adjusted.getDay(); // 0(日) ~ 6(六)
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    
+    const monday = new Date(adjusted);
+    monday.setDate(adjusted.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+
+  function changeWeekOffset(delta) {
+    weekOffset += delta;
+    renderWeeklyBookingView();
+  }
+
+  function resetToCurrentWeek() {
+    weekOffset = 0;
+    renderWeeklyBookingView();
+  }
+
+  function renderWeeklyBookingView() {
+    const baseMonday = getBaseMondayDate();
+    // 依 weekOffset 增減週數
+    const targetMonday = new Date(baseMonday);
+    targetMonday.setDate(baseMonday.getDate() + (weekOffset * 7));
+
+    const targetSunday = new Date(targetMonday);
+    targetSunday.setDate(targetMonday.getDate() + 6);
+
+    const fmtMD = (d) => `${d.getMonth()+1}/${d.getDate()}`;
+    const fmtYMD = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    document.getElementById("currentWeekRangeDisplay").innerText = `${fmtMD(targetMonday)} (一) ～ ${fmtMD(targetSunday)} (日)`;
+    document.getElementById("isCurrentWeekBadge").innerText = (weekOffset === 0) ? "(本週)" : (weekOffset > 0 ? `(未來 +${weekOffset} 週)` : `(過去 ${weekOffset} 週)`);
+
+    const daysZh = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+    const todayStr = fmtYMD(new Date());
+
+    const container = document.getElementById("weekDaysScheduleContainer");
+    const bookings = currentDB.bookings || [];
+
+    let html = "";
+    for (let i = 0; i < 7; i++) {
+      const curDate = new Date(targetMonday);
+      curDate.setDate(targetMonday.getDate() + i);
+      const curYMD = fmtYMD(curDate);
+      const isToday = (curYMD === todayStr);
+
+      // 找出該日的所有預約
+      const dayBookings = bookings.filter(b => b.date === curYMD);
+      const hasGame = dayBookings.length > 0;
+
+      let bookingDetailsHtml = "";
+      if (hasGame) {
+        bookingDetailsHtml = dayBookings.map(b => {
+          const count = (b.players || []).length;
+          let statusText = `<span style="color:var(--win); font-weight:bold;">已滿桌 (4人)</span>`;
+          if (count < 4) statusText = `<span style="color:var(--gold); font-weight:bold;">${count}/4人 (缺 ${4 - count})</span>`;
+          if (count > 4) statusText = `<span style="color:var(--primary); font-weight:bold;">${count}人熱門場</span>`;
+
+          const playerTags = (b.players && b.players.length > 0)
+            ? b.players.map(p => `<span style="background:#0f172a; border:1px solid #334155; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${p}</span>`).join("")
+            : `<span style="color:var(--text-muted); font-size:12px;">尚無選手報名</span>`;
+
+          return `
+            <div style="background:#0b1120; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-top:6px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:4px;">
+                <b style="color:#fff;">⏰ ${b.time}</b>
+                <div>${statusText}</div>
+              </div>
+              <div style="margin-bottom:4px;">${playerTags}</div>
+              ${b.note ? `<div style="font-size:11px; color:var(--text-muted);">💬 ${b.note}</div>` : ''}
+            </div>
+          `;
+        }).join("");
+      } else {
+        bookingDetailsHtml = `<div style="color:var(--text-muted); font-size:12px; margin-top:2px;">尚無牌局預約</div>`;
+      }
+
+      html += `
+        <div class="day-booking-card ${isToday ? 'is-today' : ''} ${hasGame ? 'has-game' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <b style="font-size:14px; color:${isToday ? 'var(--primary)' : '#fff'};">${daysZh[i]} (${fmtMD(curDate)})</b>
+              ${isToday ? '<span style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:4px; margin-left:6px;">今天</span>' : ''}
+            </div>
+            ${hasGame ? '<span style="font-size:11px; color:var(--gold); font-weight:bold;">🔥 有牌局</span>' : ''}
+          </div>
+          ${bookingDetailsHtml}
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
   }
 
   function renderTodayLiveSection(DB) {
@@ -467,8 +576,8 @@
       container.innerHTML = `
         <div class="idle-box">
           <span class="idle-emoji">🀄🍵</span>
-          <b style="font-size:16px; color:#fff;">三缺一啦! 快點快點！</b><br>
-          <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，牌咖還沒出生...）</span>
+          <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
+          <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
         </div>
       `;
       return;
@@ -650,22 +759,22 @@
 
     const awardsHtml = `
       <div class="award-card full-width">
-        <div class="award-title">🏆 榜一殺神 </div>
+        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
         <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人 ${topScore.matchesPlayed} 將 ｜ 獲 ${realWinCounts[topScore.name] || 0} 次單場冠軍</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🥇 日日旺 (要旺幾天啦!)</div>
+        <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
         <div class="award-player">${topWins.name}</div>
         <div class="award-stat">單場第一：<b>${actualTopWinsCount}</b> 次</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🛡️ 不敗將軍 (沒在負分的)</div>
+        <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
         <div class="award-player">${topWinRate.name}</div>
         <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (累計 ${topWinRate.winsCount} 場正分)</div>
       </div>
       <div class="award-card full-width">
-        <div class="award-title">⚡ 爆發王 (最殘忍那種)</div>
+        <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>
         <div class="award-player">${bestSinglePlayer} <span style="color:var(--win); font-size:16px;">(+${bestSingleScore} 點)</span></div>
         <div class="award-stat">締造於：${bestSingleSession || '尚無紀錄'}</div>
       </div>
@@ -695,7 +804,7 @@
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
-              <b style="color:#fff;">⚔️ ${sess.name}</b>
+              <b style="color:#fff;">📁 ${sess.name}</b>
               <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">
                 (${sess.date} ｜ 全場總計: <b style="color:var(--gold);">${sess.sessionTotalMatches || 1} 將</b>)
               </span>
