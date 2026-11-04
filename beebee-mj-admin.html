@@ -14,8 +14,8 @@
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #38bdf8;
-      --win: #22c55e;
-      --lose: #ef4444;
+      --win: #ef4444;   /* 正分紅字 */
+      --lose: #22c55e;  /* 負分綠字 */
       --gold: #f59e0b;
       --accent: #6366f1;
     }
@@ -28,7 +28,7 @@
       padding: 10px;
     }
     .container { max-width: 720px; margin: 0 auto; }
-    .tab-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 12px; }
+    .tab-bar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 12px; }
     .tab-btn {
       padding: 9px 2px; background: #1e293b; border: 1px solid var(--card-border);
       border-radius: 8px; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
@@ -79,6 +79,11 @@
 
     .progress-bar-bg { width: 100%; height: 12px; background: #0f172a; border-radius: 6px; overflow: hidden; margin: 6px 0; border: 1px solid var(--card-border); }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); transition: width 0.3s; }
+
+    /* 預約管理項目 */
+    .booking-admin-item {
+      background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -86,6 +91,7 @@
 <div class="container" id="adminApp" style="display: none;">
   <div class="tab-bar">
     <div class="tab-btn active" id="tabSettleBtn" onclick="switchTab('settle')">🀄 當場結算</div>
+    <div class="tab-btn" id="tabBookingBtn" onclick="switchTab('booking')">📅 預約管理</div>
     <div class="tab-btn" id="tabVaultBtn" onclick="switchTab('vault')">💰 東哥金庫</div>
     <div class="tab-btn" id="tabPlayerDetailBtn" onclick="switchTab('playerDetail')">👤 選手專頁</div>
     <div class="tab-btn" id="tabLeaderboardBtn" onclick="switchTab('leaderboard')">📊 生涯總榜</div>
@@ -179,7 +185,41 @@
     </div>
   </div>
 
-  <!-- 頁面 2：東哥金庫 -->
+  <!-- 頁面 2：預約管理 (不限當週、可自選任何日期發布) -->
+  <div id="pageBooking" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>➕ 新增/登記打牌預約</span>
+      </div>
+      <div class="form-row">
+        <label>📅 預約打牌日期：</label>
+        <input type="date" id="bookingDateInput">
+      </div>
+      <div class="form-row">
+        <label>⏰ 預計時段 / 集合時間：</label>
+        <input type="text" id="bookingTimeInput" placeholder="例如：晚上 19:30、下午 14:00">
+      </div>
+      <div class="form-row">
+        <label>📝 牌局備註 / 底台：</label>
+        <input type="text" id="bookingNoteInput" placeholder="例如：100/20 主場、打兩將">
+      </div>
+      <div class="form-row">
+        <label>👥 參加選手勾選 (可複選，亦可後續增減)：</label>
+        <div id="bookingRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px;"></div>
+      </div>
+      <button class="btn-submit" style="width: 100%; margin-top: 8px;" onclick="saveNewBooking()">💾 發布/更新牌局預約</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📋 已登記預約列表 (由近至遠排列)</span>
+        <span id="bookingCountBadge" style="color:var(--gold); font-size:12px;">共 0 場</span>
+      </div>
+      <div id="bookingListContainer"></div>
+    </div>
+  </div>
+
+  <!-- 頁面 3：東哥金庫 -->
   <div id="pageVault" style="display: none;">
     <div class="card" style="background:linear-gradient(135deg, #1e1b4b, #0f172a); border-color:#6366f1;">
       <div class="card-title">
@@ -218,7 +258,7 @@
     </div>
   </div>
 
-  <!-- 頁面 3：選手獨立專頁 -->
+  <!-- 頁面 4：選手獨立專頁 -->
   <div id="pagePlayerDetail" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -251,7 +291,7 @@
     </div>
   </div>
 
-  <!-- 頁面 4：生涯總榜 -->
+  <!-- 頁面 5：生涯總榜 -->
   <div id="pageLeaderboard" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -276,7 +316,7 @@
     </div>
   </div>
 
-  <!-- 頁面 5：歷場戰報 -->
+  <!-- 頁面 6：歷場戰報 -->
   <div id="pageHistory" style="display: none;">
     <div class="card">
       <div class="card-title">
@@ -287,7 +327,7 @@
     </div>
   </div>
 
-  <!-- 頁面 6：選手後台 (含前台顯示開關) -->
+  <!-- 頁面 7：選手後台 -->
   <div id="pageRoster" style="display: none;">
     <div class="card">
       <div class="card-title"><span>➕ 新增聯賽選手</span></div>
@@ -338,7 +378,7 @@
   </div>
 </div>
 
-<!-- 彈窗 2：編輯歷史場次 (支援東錢與硬體分拆調整) -->
+<!-- 彈窗 2：編輯歷史場次 -->
 <div class="modal-overlay" id="editSessionModal">
   <div class="modal">
     <div class="modal-header">
@@ -425,12 +465,11 @@
     appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
   };
   const ADMIN_PASSWORD = "3333";
-  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V25_ROSTER_UPDATE";
+  const LOCAL_CACHE_KEY = "BEEBEE_MJ_CACHE_V26_BOOKING";
 
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("league_data");
 
-  // 更新預設 14 位選手名單
   const DEFAULT_ROSTER = [
     "胖弟", "大雄", "安妮", "公公", "鴨鴨", "翔哥", "中雯", 
     "酒空馨", "于兄", "阿康", "JG", "學長", "萱", "Doggy"
@@ -441,15 +480,16 @@
     const visibility = {};
     DEFAULT_ROSTER.forEach(name => {
       stats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
-      visibility[name] = true; // 預設全部顯示在前台
+      visibility[name] = true;
     });
     return {
-      version: 25,
+      version: 26,
       roster: [...DEFAULT_ROSTER],
       playerVisibility: visibility,
       currentSession: null,
       totalLeagueMatches: 0,
       playerStats: stats,
+      bookings: [], // 牌局預約清單
       vault: {
         totalDong: 0,
         totalHardware: 0,
@@ -495,8 +535,9 @@
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
-      if (val && val.version >= 25) {
+      if (val && val.version >= 26) {
         DB = val;
+        if (!DB.bookings) DB.bookings = [];
         if (!DB.playerVisibility) DB.playerVisibility = {};
         (DB.roster || DEFAULT_ROSTER).forEach(name => {
           if (DB.playerVisibility[name] === undefined) DB.playerVisibility[name] = true;
@@ -517,6 +558,7 @@
 
   function switchTab(tab) {
     document.getElementById("pageSettle").style.display = tab === 'settle' ? 'block' : 'none';
+    document.getElementById("pageBooking").style.display = tab === 'booking' ? 'block' : 'none';
     document.getElementById("pageVault").style.display = tab === 'vault' ? 'block' : 'none';
     document.getElementById("pagePlayerDetail").style.display = tab === 'playerDetail' ? 'block' : 'none';
     document.getElementById("pageLeaderboard").style.display = tab === 'leaderboard' ? 'block' : 'none';
@@ -524,12 +566,14 @@
     document.getElementById("pageRoster").style.display = tab === 'roster' ? 'block' : 'none';
 
     document.getElementById("tabSettleBtn").classList.toggle("active", tab === 'settle');
+    document.getElementById("tabBookingBtn").classList.toggle("active", tab === 'booking');
     document.getElementById("tabVaultBtn").classList.toggle("active", tab === 'vault');
     document.getElementById("tabPlayerDetailBtn").classList.toggle("active", tab === 'playerDetail');
     document.getElementById("tabLeaderboardBtn").classList.toggle("active", tab === 'leaderboard');
     document.getElementById("tabHistoryBtn").classList.toggle("active", tab === 'history');
     document.getElementById("tabRosterBtn").classList.toggle("active", tab === 'roster');
 
+    if (tab === 'booking') renderBookingAdminView();
     if (tab === 'vault') renderVaultView();
     if (tab === 'playerDetail') renderPlayerDetailView();
     if (tab === 'leaderboard') renderLeaderboard();
@@ -551,7 +595,7 @@
     const container = document.getElementById("modalRosterCheckboxes");
     container.innerHTML = (DB.roster || DEFAULT_ROSTER).map(name => `
       <label style="display:flex; align-items:center; background:#1e293b; padding:8px; border-radius:6px; cursor:pointer;">
-        <input type="checkbox" value="${name}" class="roster-chk"  style="width:18px; height:18px; margin-right:6px;">
+        <input type="checkbox" value="${name}" class="roster-chk" checked style="width:18px; height:18px; margin-right:6px;">
         ${name}
       </label>
     `).join("");
@@ -611,6 +655,9 @@
     renderVaultView();
     renderArchivedSessions();
     renderRosterView();
+    if (document.getElementById("pageBooking").style.display === "block") {
+      renderBookingAdminView();
+    }
     if (document.getElementById("pagePlayerDetail").style.display === "block") {
       renderPlayerDetailView();
     }
@@ -800,6 +847,105 @@
       console.error("結算寫入失敗：", err);
       alert("結算過程發生錯誤：" + err.message);
     }
+  }
+
+  // --- 📅 預約管理功能 (不限當週) ---
+  function renderBookingAdminView() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    if (!document.getElementById("bookingDateInput").value) {
+      document.getElementById("bookingDateInput").value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    const container = document.getElementById("bookingRosterCheckboxes");
+    const roster = DB.roster || DEFAULT_ROSTER;
+    container.innerHTML = roster.map(name => `
+      <label style="display:flex; align-items:center; background:#0f172a; padding:6px 8px; border-radius:6px; cursor:pointer;">
+        <input type="checkbox" value="${name}" class="booking-player-chk" style="width:16px; height:16px; margin-right:6px;">
+        ${name}
+      </label>
+    `).join("");
+
+    renderBookingList();
+  }
+
+  function saveNewBooking() {
+    const rawDate = document.getElementById("bookingDateInput").value;
+    if (!rawDate) { alert("請選擇預約日期！"); return; }
+
+    const time = document.getElementById("bookingTimeInput").value.trim() || "晚上場";
+    const note = document.getElementById("bookingNoteInput").value.trim() || "";
+    const players = Array.from(document.querySelectorAll(".booking-player-chk:checked")).map(el => el.value);
+
+    if (!DB.bookings) DB.bookings = [];
+    
+    // 若該天該時段已存在則覆蓋，否則新增
+    const bookingId = "BOOK_" + rawDate + "_" + Date.now();
+    DB.bookings.unshift({
+      id: bookingId,
+      date: rawDate,
+      time: time,
+      note: note,
+      players: players,
+      createdAt: new Date().toISOString()
+    });
+
+    // 依日期排序
+    DB.bookings.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // 清空重置部分欄位
+    document.getElementById("bookingNoteInput").value = "";
+    document.querySelectorAll(".booking-player-chk").forEach(el => el.checked = false);
+
+    renderBookingList();
+    saveDBToCloud();
+    alert(`預約已成功發布！日期：${rawDate} (${time})`);
+  }
+
+  function renderBookingList() {
+    const container = document.getElementById("bookingListContainer");
+    const bookings = DB.bookings || [];
+    document.getElementById("bookingCountBadge").innerText = `共 ${bookings.length} 場`;
+
+    if (bookings.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:15px;">尚無任何預約紀錄</div>`;
+      return;
+    }
+
+    container.innerHTML = bookings.map((b, idx) => {
+      const count = (b.players || []).length;
+      let statusBadge = `<span style="color:var(--win); font-weight:bold;">滿桌 (4人)</span>`;
+      if (count < 4) statusBadge = `<span style="color:var(--gold); font-weight:bold;">${count}/4人 (缺 ${4 - count})</span>`;
+      if (count > 4) statusBadge = `<span style="color:var(--primary); font-weight:bold;">${count}人熱門輪替</span>`;
+
+      return `
+        <div class="booking-admin-item">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div>
+              <b style="color:#fff; font-size:15px;">📅 ${b.date}</b>
+              <span style="color:var(--primary); font-weight:bold; margin-left:6px;">⏰ ${b.time}</span>
+            </div>
+            <div>
+              ${statusBadge}
+              <button class="btn-sm btn-del" style="margin-left:8px;" onclick="deleteBooking(${idx})">🗑️ 刪除</button>
+            </div>
+          </div>
+          <div style="font-size:13px; color:#cbd5e1; margin-top:4px;">
+            <b>已報名：</b> ${(b.players && b.players.length > 0) ? b.players.join("、") : '<span style="color:var(--text-muted);">尚無人報名</span>'}
+          </div>
+          ${b.note ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px;">💬 備註：${b.note}</div>` : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function deleteBooking(idx) {
+    if (!confirm("確定刪除此筆預約牌局嗎？")) return;
+    DB.bookings.splice(idx, 1);
+    renderBookingList();
+    saveDBToCloud();
   }
 
   function renderVaultView() {
@@ -1027,7 +1173,6 @@
     }).join("");
   }
 
-  // --- 修改歷場戰報：支援東錢分拆與將數分數調整 ---
   function openEditSessionModal(sIdx) {
     currentlyEditingSessionIndex = sIdx;
     const sess = DB.archivedSessions[sIdx];
@@ -1087,7 +1232,6 @@
     alert("歷場戰報已成功修改，東哥金庫與選手生涯總榜已重新校準！");
   }
 
-  // 重新計算全生涯與金庫總和
   function recalculateAllLifetimeStats() {
     (DB.roster || DEFAULT_ROSTER).forEach(name => {
       DB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
@@ -1135,7 +1279,6 @@
     saveDBToCloud();
   }
 
-  // --- 選手後台 (支援切換前台可見性) ---
   function renderRosterView() {
     const container = document.getElementById("rosterListContainer");
     const roster = DB.roster || DEFAULT_ROSTER;
