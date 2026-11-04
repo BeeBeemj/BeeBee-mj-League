@@ -576,8 +576,8 @@
       container.innerHTML = `
         <div class="idle-box">
           <span class="idle-emoji">🀄🍵</span>
-          <b style="font-size:16px; color:#fff;">三缺一就開不了桌，茶水已備妥，快催腳來！</b><br>
-          <span style="color:var(--text-muted); font-size:12px;">（目前尚未開場，洗牌聲正在後台待命...）</span>
+          <b style="font-size:16px; color:#fff;">三缺一啦！</b><br>
+          <span style="color:var(--text-muted); font-size:12px;">（不要再拖拖拉拉了）</span>
         </div>
       `;
       return;
@@ -759,22 +759,22 @@
 
     const awardsHtml = `
       <div class="award-card full-width">
-        <div class="award-title">🏆 勝率排行第一 (總積分王)</div>
+        <div class="award-title">🏆 榜一魔王 (各位小嫩嫩看準目標)</div>
         <div class="award-player">${topScore.name} <span style="color:var(--gold); font-size:16px;">(${topScore.totalScore > 0 ? '+' : ''}${topScore.totalScore} 點)</span></div>
         <div class="award-stat">累計出賽 ${topScore.sessionsPlayed} 場 ｜ 個人 ${topScore.matchesPlayed} 將 ｜ 獲 ${realWinCounts[topScore.name] || 0} 次單場冠軍</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🥇 奪冠王 (單場第一名最多)</div>
+        <div class="award-title">🥇 奪冠王 (天天都在旺?)</div>
         <div class="award-player">${topWins.name}</div>
         <div class="award-stat">單場第一：<b>${actualTopWinsCount}</b> 次</div>
       </div>
       <div class="award-card">
-        <div class="award-title">🛡️ 不敗戰神 (場勝率最高)</div>
+        <div class="award-title">🛡️ 不敗戰神 (沒在輸)</div>
         <div class="award-player">${topWinRate.name}</div>
         <div class="award-stat">正分勝率：<b>${topWinRate.winRate}</b> (累計 ${topWinRate.winsCount} 場正分)</div>
       </div>
       <div class="award-card full-width">
-        <div class="award-title">⚡ 單場爆發王 (歷史單日最高得分)</div>
+        <div class="award-title">⚡ 單場爆發王 (一天就讓你們都下去)</div>
         <div class="award-player">${bestSinglePlayer} <span style="color:var(--win); font-size:16px;">(+${bestSingleScore} 點)</span></div>
         <div class="award-stat">締造於：${bestSingleSession || '尚無紀錄'}</div>
       </div>
@@ -804,7 +804,7 @@
         <div class="session-archive-card">
           <div class="session-archive-header">
             <div>
-              <b style="color:#fff;">📁 ${sess.name}</b>
+              <b style="color:#fff;">⚔️ ${sess.name}</b>
               <span style="font-size:12px; color:var(--text-muted); margin-left:6px;">
                 (${sess.date} ｜ 全場總計: <b style="color:var(--gold);">${sess.sessionTotalMatches || 1} 將</b>)
               </span>
