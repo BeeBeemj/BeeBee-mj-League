@@ -535,18 +535,14 @@
   function initFirebaseSync() {
     dbRef.on("value", snapshot => {
       const val = snapshot.val();
-      if (val && val.version >= 26) {
+      if (val) {
+        // 直接繼承雲端現有資料，缺欄位自動補齊，絕不覆蓋重置
         DB = val;
         if (!DB.bookings) DB.bookings = [];
-        if (!DB.playerVisibility) DB.playerVisibility = {};
-        (DB.roster || DEFAULT_ROSTER).forEach(name => {
-          if (DB.playerVisibility[name] === undefined) DB.playerVisibility[name] = true;
-        });
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DB));
+        if (!DB.archivedSessions) DB.archivedSessions = [];
+        if (!DB.playerStats) DB.playerStats = {};
+        if (!DB.vault) DB.vault = { totalDong: 0, totalHardware: 0, hardwareLimit: 1800, logs: [] };
         renderAllLocal();
-      } else {
-        DB = createCleanDB();
-        saveDBToCloud();
       }
     });
   }
