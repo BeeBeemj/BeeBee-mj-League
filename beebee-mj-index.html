@@ -532,16 +532,16 @@
           const count = (b.players || []).length;
           let statusText = `<span style="color:var(--win); font-weight:bold;">已滿桌 (4人)</span>`;
           if (count < 4) statusText = `<span style="color:var(--gold); font-weight:bold;">${count}/4人 (缺 ${4 - count})</span>`;
-          if (count > 4) statusText = `<span style="color:var(--primary); font-weight:bold;">${count}人熱門場</span>`;
+          if (count > 4) statusText = `<span style="color:var(--primary); font-weight:bold;">${count}P混戰</span>`;
 
           const playerTags = (b.players && b.players.length > 0)
             ? b.players.map(p => `<span style="background:#0f172a; border:1px solid #334155; padding:2px 6px; border-radius:4px; font-size:11px; margin-right:4px;">${p}</span>`).join("")
-            : `<span style="color:var(--text-muted); font-size:12px;">尚無選手報名</span>`;
+            : `<span style="color:var(--text-muted); font-size:12px;">就缺你</span>`;
 
           return `
             <div style="background:#0b1120; border:1px solid var(--card-border); border-radius:6px; padding:8px 10px; margin-top:6px;">
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:4px;">
-                <b style="color:#fff;">⏰ ${b.time}</b>
+                <b style="color:#fff;">⏰ ${b.time} ${b.title ? `<span style="color:var(--gold); margin-left:4px;">［${b.title}］</span>` : ''}</b>
                 <div>${statusText}</div>
               </div>
               <div style="margin-bottom:4px;">${playerTags}</div>
