@@ -185,15 +185,24 @@
     </div>
   </div>
 
-  <!-- 頁面 2：預約管理 (不限當週、可自選任何日期發布) -->
+  <!-- 頁面 2：預約管理 (支援點擊彈出日曆、日期名稱、修改編輯) -->
   <div id="pageBooking" style="display: none;">
     <div class="card">
       <div class="card-title">
-        <span>➕ 新增/登記打牌預約</span>
+        <span id="bookingFormModeTitle">➕ 新增打牌預約</span>
+        <button id="cancelEditBookingBtn" class="btn-sm" style="display:none; background:#475569; color:#fff;" onclick="resetBookingForm()">✕ 取消編輯</button>
+      </div>
+      
+      <!-- 隱藏的編輯 ID 紀錄欄位 -->
+      <input type="hidden" id="editingBookingId" value="">
+
+      <div class="form-row">
+        <label>📅 預約打牌日期 (點選任一處即可彈出日曆)：</label>
+        <input type="date" id="bookingDateInput" style="cursor: pointer;" onclick="if(this.showPicker) this.showPicker()">
       </div>
       <div class="form-row">
-        <label>📅 預約打牌日期：</label>
-        <input type="date" id="bookingDateInput">
+        <label>🏷️ 日期名稱 / 場次主題 (選填)：</label>
+        <input type="text" id="bookingTitleInput" placeholder="例如：週五激戰夜、週末下午打雀、連莊之戰">
       </div>
       <div class="form-row">
         <label>⏰ 預計時段 / 集合時間：</label>
@@ -204,10 +213,10 @@
         <input type="text" id="bookingNoteInput" placeholder="例如：100/20 主場、打兩將">
       </div>
       <div class="form-row">
-        <label>👥 參加選手勾選 (可複選，亦可後續增減)：</label>
+        <label>👥 參加選手勾選 (可複選)：</label>
         <div id="bookingRosterCheckboxes" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px;"></div>
       </div>
-      <button class="btn-submit" style="width: 100%; margin-top: 8px;" onclick="saveNewBooking()">💾 發布/更新牌局預約</button>
+      <button class="btn-submit" id="saveBookingSubmitBtn" style="width: 100%; margin-top: 8px;" onclick="saveBookingData()">💾 發布牌局預約</button>
     </div>
 
     <div class="card">
@@ -845,13 +854,15 @@
     }
   }
 
-  // --- 📅 預約管理功能 (不限當週) ---
+  // --- 📅 預約管理功能升級 (可編輯 + 日期名稱 + 彈出日曆) ---
   function renderBookingAdminView() {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    if (!document.getElementById("bookingDateInput").value) {
+    
+    // 若尚未填寫日期且非編輯模式，預設帶入今日
+    if (!document.getElementById("bookingDateInput").value && !document.getElementById("editingBookingId").value) {
       document.getElementById("bookingDateInput").value = `${yyyy}-${mm}-${dd}`;
     }
 
@@ -859,7 +870,7 @@
     const roster = DB.roster || DEFAULT_ROSTER;
     container.innerHTML = roster.map(name => `
       <label style="display:flex; align-items:center; background:#0f172a; padding:6px 8px; border-radius:6px; cursor:pointer;">
-        <input type="checkbox" value="${name}" class="booking-player-chk" style="width:16px; height:16px; margin-right:6px;">
+        <input type="checkbox" value="${name}" class="booking-player-chk" id="chk-p-${name}" style="width:16px; height:16px; margin-right:6px;">
         ${name}
       </label>
     `).join("");
@@ -867,39 +878,99 @@
     renderBookingList();
   }
 
-  function saveNewBooking() {
+  // 儲存預約 (自動判定為「新增」或「修改儲存」)
+  function saveBookingData() {
     const rawDate = document.getElementById("bookingDateInput").value;
     if (!rawDate) { alert("請選擇預約日期！"); return; }
 
+    const title = document.getElementById("bookingTitleInput").value.trim() || "";
     const time = document.getElementById("bookingTimeInput").value.trim() || "晚上場";
     const note = document.getElementById("bookingNoteInput").value.trim() || "";
     const players = Array.from(document.querySelectorAll(".booking-player-chk:checked")).map(el => el.value);
+    const editingId = document.getElementById("editingBookingId").value;
 
     if (!DB.bookings) DB.bookings = [];
-    
-    // 若該天該時段已存在則覆蓋，否則新增
-    const bookingId = "BOOK_" + rawDate + "_" + Date.now();
-    DB.bookings.unshift({
-      id: bookingId,
-      date: rawDate,
-      time: time,
-      note: note,
-      players: players,
-      createdAt: new Date().toISOString()
-    });
 
-    // 依日期排序
+    if (editingId) {
+      // 編輯模式：更新現有資料
+      const targetIndex = DB.bookings.findIndex(b => b.id === editingId);
+      if (targetIndex !== -1) {
+        DB.bookings[targetIndex] = {
+          ...DB.bookings[targetIndex],
+          date: rawDate,
+          title: title,
+          time: time,
+          note: note,
+          players: players,
+          updatedAt: new Date().toISOString()
+        };
+        alert(`預約已成功更新！日期：${rawDate} ${title ? '(' + title + ')' : ''}`);
+      }
+    } else {
+      // 新增模式：建立新紀錄
+      const newBooking = {
+        id: "BOOK_" + Date.now(),
+        date: rawDate,
+        title: title,
+        time: time,
+        note: note,
+        players: players,
+        createdAt: new Date().toISOString()
+      };
+      DB.bookings.unshift(newBooking);
+      alert(`預約已發布！日期：${rawDate} ${title ? '(' + title + ')' : ''}`);
+    }
+
+    // 依預約日期重新排序 (近到遠)
     DB.bookings.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 清空重置部分欄位
+    resetBookingForm();
+    renderBookingList();
+    saveDBToCloud();
+  }
+
+  // 進入編輯模式：將資料回填至表單
+  function startEditBooking(idx) {
+    const b = DB.bookings[idx];
+    if (!b) return;
+
+    document.getElementById("editingBookingId").value = b.id;
+    document.getElementById("bookingDateInput").value = b.date || "";
+    document.getElementById("bookingTitleInput").value = b.title || "";
+    document.getElementById("bookingTimeInput").value = b.time || "";
+    document.getElementById("bookingNoteInput").value = b.note || "";
+
+    // 勾選對應選手
+    const selectedPlayers = b.players || [];
+    document.querySelectorAll(".booking-player-chk").forEach(chk => {
+      chk.checked = selectedPlayers.includes(chk.value);
+    });
+
+    // 介面切換為編輯模式
+    document.getElementById("bookingFormModeTitle").innerHTML = `<span style="color:var(--gold);">✏️ 正在修改預約 (${b.date})</span>`;
+    document.getElementById("saveBookingSubmitBtn").innerText = "💾 儲存修改內容";
+    document.getElementById("saveBookingSubmitBtn").style.background = "var(--gold)";
+    document.getElementById("cancelEditBookingBtn").style.display = "inline-block";
+
+    // 滑動至表單頂部
+    document.getElementById("pageBooking").scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // 重置表單為「新增模式」
+  function resetBookingForm() {
+    document.getElementById("editingBookingId").value = "";
+    document.getElementById("bookingTitleInput").value = "";
+    document.getElementById("bookingTimeInput").value = "";
     document.getElementById("bookingNoteInput").value = "";
     document.querySelectorAll(".booking-player-chk").forEach(el => el.checked = false);
 
-    renderBookingList();
-    saveDBToCloud();
-    alert(`預約已成功發布！日期：${rawDate} (${time})`);
+    document.getElementById("bookingFormModeTitle").innerText = "➕ 新增打牌預約";
+    document.getElementById("saveBookingSubmitBtn").innerText = "💾 發布牌局預約";
+    document.getElementById("saveBookingSubmitBtn").style.background = "var(--primary)";
+    document.getElementById("cancelEditBookingBtn").style.display = "none";
   }
 
+  // 渲染預約列表 (包含編輯與刪除按鈕)
   function renderBookingList() {
     const container = document.getElementById("bookingListContainer");
     const bookings = DB.bookings || [];
@@ -912,24 +983,26 @@
 
     container.innerHTML = bookings.map((b, idx) => {
       const count = (b.players || []).length;
-      let statusBadge = `<span style="color:var(--win); font-weight:bold;">滿桌 (4人)</span>`;
+      let statusBadge = `<span style="color:var(--lose); font-weight:bold;">已滿桌 (4人)</span>`;
       if (count < 4) statusBadge = `<span style="color:var(--gold); font-weight:bold;">${count}/4人 (缺 ${4 - count})</span>`;
-      if (count > 4) statusBadge = `<span style="color:var(--primary); font-weight:bold;">${count}人熱門輪替</span>`;
+      if (count > 4) statusBadge = `<span style="color:var(--primary); font-weight:bold;">${count}P混戰</span>`;
 
       return `
         <div class="booking-admin-item">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
             <div>
               <b style="color:#fff; font-size:15px;">📅 ${b.date}</b>
+              ${b.title ? `<span style="color:var(--gold); font-weight:bold; margin-left:6px;">［${b.title}］</span>` : ''}
               <span style="color:var(--primary); font-weight:bold; margin-left:6px;">⏰ ${b.time}</span>
             </div>
             <div>
               ${statusBadge}
-              <button class="btn-sm btn-del" style="margin-left:8px;" onclick="deleteBooking(${idx})">🗑️ 刪除</button>
+              <button class="btn-sm btn-edit" style="margin-left:6px;" onclick="startEditBooking(${idx})">✏️ 編輯</button>
+              <button class="btn-sm btn-del" style="margin-left:4px;" onclick="deleteBooking(${idx})">🗑️ 刪除</button>
             </div>
           </div>
           <div style="font-size:13px; color:#cbd5e1; margin-top:4px;">
-            <b>已報名：</b> ${(b.players && b.players.length > 0) ? b.players.join("、") : '<span style="color:var(--text-muted);">尚無人報名</span>'}
+            <b>已報名：</b> ${(b.players && b.players.length > 0) ? b.players.join("、") : '<span style="color:var(--text-muted);">等你來報名</span>'}
           </div>
           ${b.note ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px;">💬 備註：${b.note}</div>` : ''}
         </div>
@@ -940,6 +1013,7 @@
   function deleteBooking(idx) {
     if (!confirm("確定刪除此筆預約牌局嗎？")) return;
     DB.bookings.splice(idx, 1);
+    resetBookingForm();
     renderBookingList();
     saveDBToCloud();
   }
