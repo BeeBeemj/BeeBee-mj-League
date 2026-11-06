@@ -169,4 +169,325 @@
   <!-- 頂部頁籤切換鈕 -->
   <div class="nav-tab-bar">
     <div class="nav-tab-btn active" id="tabBtnBoard" onclick="switchMainTab('board')">📊 戰報排行</div>
-    <div class="nav-tab-btn" id="tabBtnBooking"
+    <div class="nav-tab-btn" id="tabBtnBooking" onclick="switchMainTab('booking')">📅 當週預約</div>
+    <div class="nav-tab-btn" id="tabBtnTai" onclick="switchMainTab('tai')">🀄 台數表</div>
+    <div class="nav-tab-btn" id="tabBtnDispute" onclick="switchMainTab('dispute')">⚖️ 爭議規則</div>
+  </div>
+
+  <!-- ================= 頁籤 1：即時戰報與排行 ================= -->
+  <div id="viewBoard">
+    <div class="today-live-box" id="todaySessionSection">
+      <div class="idle-box">
+        <span class="idle-emoji">🀄🍵</span>
+        <b style="font-size:16px; color:#fff;">三缺一啦！</b><br>
+        <span style="color:var(--text-muted); font-size:12px;">（不要再拖拖拉拉了）</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>👑 聯賽數據榮譽榜</span>
+        <span style="font-size: 11px; color: var(--text-muted);">同分比序：勝場 ➔ 總積分</span>
+      </div>
+      <div class="awards-grid" id="awardsContainer"></div>
+    </div>
+
+    <!-- 支援全欄位點擊排序的總積分榜 -->
+    <div class="card">
+      <div class="card-title">
+        <span>🏆 選手時時總積分排行榜 (點表頭切換排序)</span>
+        <span id="leagueMatchesTotal" style="color: var(--gold); font-size: 12px;">累計：0 場 / 0 將</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>名次</th>
+              <th>選手</th>
+              <th class="sortable-th" onclick="handleTableSort('totalScore')">總積分 <span id="sort-totalScore" class="sort-indicator">▼</span></th>
+              <th class="sortable-th" onclick="handleTableSort('avgScore')">場均得分 <span id="sort-avgScore" class="sort-indicator"></span></th>
+              <th class="sortable-th" onclick="handleTableSort('sessionsPlayed')">出賽場數 <span id="sort-sessionsPlayed" class="sort-indicator"></span></th>
+              <th class="sortable-th" onclick="handleTableSort('matchesPlayed')">個人總將數 <span id="sort-matchesPlayed" class="sort-indicator"></span></th>
+              <th class="sortable-th" onclick="handleTableSort('winRateNum')">場勝率 <span id="sort-winRateNum" class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 選手個人專頁 (含場均得分與走勢點框框) -->
+    <div class="card">
+      <div class="card-title">
+        <span>👤 選手個人專頁 (走勢與出賽歷程)</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;" id="publicPlayerPills"></div>
+      <div id="publicPlayerDetailBox" style="display:none; background:#0f172a; padding:12px; border-radius:8px; border:1px solid var(--card-border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <b style="font-size:17px; color:#fff;" id="pubDetailName">選手</b>
+            <span style="font-size:12px; color:var(--text-muted); display:block;" id="pubDetailSub">總戰績</span>
+          </div>
+          <div style="display:flex; gap:14px; text-align:right;">
+            <div>
+              <span style="font-size:11px; color:var(--text-muted); display:block;">場均得分</span>
+              <span style="font-size:17px; font-weight:800; font-family:monospace;" id="pubDetailAvgScore">0</span>
+            </div>
+            <div>
+              <span style="font-size:11px; color:var(--text-muted); display:block;">累積淨勝點數</span>
+              <span style="font-size:22px; font-weight:900; font-family:monospace;" id="pubDetailScore">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <div class="trend-chart-box" id="pubTrendChartBox"></div>
+          <div class="chart-tooltip" id="chartTooltip"></div>
+        </div>
+
+        <div style="font-size:12px; font-weight:bold; color:var(--gold); margin:8px 0 6px 0;">個人歷場出賽紀錄：</div>
+        <div id="pubDetailMatchList" style="max-height:220px; overflow-y:auto; font-size:12px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📜 歷場完賽戰報</span>
+        <span id="matchArchiveCount" style="color: var(--gold); font-size: 12px;">共 0 場</span>
+      </div>
+      <div id="archivedSessionsContainer"></div>
+    </div>
+  </div>
+
+  <!-- ================= 頁籤 2：當週預約 (週一 08:00 自動切週) ================= -->
+  <div id="viewBooking" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>📅 當週牌局預約看板</span>
+        <span style="font-size:11px; color:var(--text-muted);">每週一 08:00 自動換週</span>
+      </div>
+
+      <div class="week-nav-bar">
+        <button class="btn-pill" onclick="changeWeekOffset(-1)">◀ 上一週</button>
+        <div style="text-align:center;">
+          <b id="currentWeekRangeDisplay" style="color:#fff; font-size:14px;">載入中...</b>
+          <div id="isCurrentWeekBadge" style="font-size:11px; color:var(--gold); margin-top:2px;">(本週)</div>
+        </div>
+        <button class="btn-pill" onclick="changeWeekOffset(1)">下一週 ▶</button>
+      </div>
+
+      <div style="text-align:center; margin-bottom:10px;">
+        <button class="btn-sm" style="background:#1e293b; color:var(--primary); border:1px solid #334155; padding:4px 8px; border-radius:6px; cursor:pointer;" onclick="resetToCurrentWeek()">回到本週</button>
+      </div>
+
+      <div id="weekDaysScheduleContainer"></div>
+    </div>
+  </div>
+
+  <!-- ================= 頁籤 3：台數表 ================= -->
+  <div id="viewTai" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>🀄 台灣十六張麻將 - 聯賽正規台數表</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="rule-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">牌型 / 規則</th>
+              <th style="width: 20%;">台數</th>
+              <th>說明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><b>天胡</b></td><td><span class="tai-badge">24 台</span></td><td>莊家起手即胡。</td></tr>
+            <tr><td><b>天聽</b></td><td><span class="tai-badge">16 台</span></td><td>起手聽牌，包含莊家開門；海內沒半張牌即聽牌。</td></tr>
+            <tr><td><b>大四喜</b></td><td><span class="tai-badge">16 台</span></td><td>四組風牌刻/槓。</td></tr>
+            <tr><td><b>字一色</b></td><td><span class="tai-badge">16 台</span></td><td>全由字牌組成。</td></tr>
+            <tr><td><b>MIGI</b></td><td><span class="tai-badge">8 台</span></td><td>八張內無吃碰且聽牌；嗆 MIGI 卻沒聽牌，詐 MI 則包。</td></tr>
+            <tr><td><b>大三元</b></td><td><span class="tai-badge">8 台</span></td><td>中發白三組刻/槓。</td></tr>
+            <tr><td><b>小四喜</b></td><td><span class="tai-badge">8 台</span></td><td>三組風牌刻/槓加一組風牌眼。</td></tr>
+            <tr><td><b>八仙</b></td><td><span class="tai-badge">8 台</span></td><td>八張花即胡，不需再補牌。</td></tr>
+            <tr><td><b>七搶一</b></td><td><span class="tai-badge">8 台</span></td><td>花胡後牌局結束。</td></tr>
+            <tr><td><b>清一色</b></td><td><span class="tai-badge">8 台</span></td><td>同一門數牌組成。</td></tr>
+            <tr><td><b>五暗刻</b></td><td><span class="tai-badge">8 台</span></td><td>五組暗刻/暗槓。</td></tr>
+            <tr><td><b>四暗刻</b></td><td><span class="tai-badge">5 台</span></td><td>四組暗刻/暗槓。</td></tr>
+            <tr><td><b>湊一色</b></td><td><span class="tai-badge">4 台</span></td><td>同一門數牌加字牌。</td></tr>
+            <tr><td><b>小三元</b></td><td><span class="tai-badge">4 台</span></td><td>兩組三元刻/槓加一組三元眼。</td></tr>
+            <tr><td><b>平胡</b></td><td><span class="tai-badge">2 台</span></td><td>門清有平胡，抓得出眼睛即可。</td></tr>
+            <tr><td><b>三暗刻</b></td><td><span class="tai-badge">2 台</span></td><td>三組暗刻/暗槓。</td></tr>
+            <tr><td><b>門清</b></td><td><span class="tai-badge">1 台</span></td><td>沒有吃碰明槓。</td></tr>
+            <tr><td><b>不求人</b></td><td><span class="tai-badge">1 台</span></td><td>門清自摸。</td></tr>
+            <tr><td><b>全求人</b></td><td><span class="tai-badge">1 台</span></td><td>全靠吃碰後胡別人打出的牌。</td></tr>
+            <tr><td><b>自摸</b></td><td><span class="tai-badge">1 台</span></td><td>不嚴格，不立不靠不掉不離手即可。</td></tr>
+            <tr><td><b>本花</b></td><td><span class="tai-badge">1 台</span></td><td>符合座位本花。</td></tr>
+            <tr><td><b>花槓</b></td><td><span class="tai-badge">2 台</span></td><td>花牌成組。</td></tr>
+            <tr><td><b>本風</b></td><td><span class="tai-badge">1 台</span></td><td>符合該局風位。</td></tr>
+            <tr><td><b>獨聽</b></td><td><span class="tai-badge">1 台</span></td><td>單一聽牌型。</td></tr>
+            <tr><td><b>莊家</b></td><td><span class="tai-badge">1 台</span></td><td>莊家胡牌另計。</td></tr>
+            <tr><td><b>連 N 拉 N</b></td><td><span class="tai-badge">2N 台</span></td><td>依連莊數加計。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 頁籤 4：爭議規則 ================= -->
+  <div id="viewDispute" style="display: none;">
+    <div class="card">
+      <div class="card-title">
+        <span>⚖️ DISPUTES - 常見爭議規則與本站裁決</span>
+      </div>
+      <div class="stats-table-wrapper">
+        <table class="rule-table">
+          <thead>
+            <tr>
+              <th style="width: 32%;">情境</th>
+              <th>本站整理規則</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><b>MIGI 兩手內</b></td><td>莊家沒有第三手，計 8 台。</td></tr>
+            <tr><td><b>起手聽牌</b></td><td>算天聽，包含莊家開門，計 16 台。</td></tr>
+            <tr><td><b>八張花</b></td><td>即胡，不需再做補牌動作；花胡後牌局結束。</td></tr>
+            <tr><td><b>門清平胡</b></td><td>門清有平胡，抓得出眼睛即可。</td></tr>
+            <tr><td><b>詐胡</b></td><td>一底五賠三家，莊家另計，莊家續連。</td></tr>
+            <tr><td><b>自摸認定</b></td><td>不嚴格，不立不靠不掉不離手即可。</td></tr>
+            <tr><td><b>吃錯牌</b></td><td>當輪可以拉回；過手後被抓即相公，被抓到倒牌即算詐胡。</td></tr>
+            <tr><td><b>打出的牌</b></td><td>沒離手皆可收回；若離手則不可收回。</td></tr>
+            <tr><td><b>嗆 MIGI 或天聽</b></td><td>若沒聽牌，詐 MI 則包。</td></tr>
+            <tr><td><b>不採用規則</b></td><td>無四槓和、無哩咕，鐵八敦。</td></tr>
+            <tr><td><b>多家胡牌</b></td><td>有三響無兩響；兩響即攔胡。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="dispute-section-title">
+        <span>🛑 麻將碰牌權消滅時機判定</span>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">1. 吃牌 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 吃進 ＋ 捨牌落地（兩步驟皆完成）。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 吃牌者還沒完成吃牌+捨牌，隨時都能喊碰。</div>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">2. 一般摸牌 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 摸牌者摸牌到打出廢牌落地。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 摸牌者就算已經把牌插進手裡選牌，只要廢牌還沒打到桌上，碰牌者都能喊碰，摸牌者把牌放回牌牆。</div>
+      </div>
+
+      <div class="dispute-box">
+        <div class="dispute-item-title">3. 自摸 vs 碰牌</div>
+        <div><b>• 消滅時機：</b> 摸牌者手不離牌，直接在桌面翻開亮牌。</div>
+        <div style="color:var(--text-muted); margin-top:2px;"><b>• 簡易判定：</b> 摸牌－看牌－亮牌，就算自摸生效。</div>
+      </div>
+
+      <div class="dispute-section-title">
+        <span>✨ 自摸判定細則</span>
+      </div>
+      <div class="dispute-box" style="border-left: 3px solid var(--gold);">
+        <div>不立不靠不掉不離手即可，不鼓勵碰到牌尺或桌框，但會給過。</div>
+        <div style="color:var(--win); font-weight:bold; margin-top:4px;">
+          📌 基本上僅嚴格執行「不離手」、「不靠入手牌」。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchMainTab(tab) {
+    const vBoard = document.getElementById("viewBoard");
+    const vBooking = document.getElementById("viewBooking");
+    const vTai = document.getElementById("viewTai");
+    const vDispute = document.getElementById("viewDispute");
+
+    if (vBoard) vBoard.style.display = (tab === 'board') ? 'block' : 'none';
+    if (vBooking) vBooking.style.display = (tab === 'booking') ? 'block' : 'none';
+    if (vTai) vTai.style.display = (tab === 'tai') ? 'block' : 'none';
+    if (vDispute) vDispute.style.display = (tab === 'dispute') ? 'block' : 'none';
+
+    const bBoard = document.getElementById("tabBtnBoard");
+    const bBooking = document.getElementById("tabBtnBooking");
+    const bTai = document.getElementById("tabBtnTai");
+    const bDispute = document.getElementById("tabBtnDispute");
+
+    if (bBoard) bBoard.classList.toggle("active", tab === 'board');
+    if (bBooking) bBooking.classList.toggle("active", tab === 'booking');
+    if (bTai) bTai.classList.toggle("active", tab === 'tai');
+    if (bDispute) bDispute.classList.toggle("active", tab === 'dispute');
+
+    if (tab === 'booking') renderWeeklyBookingView();
+  }
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBR1MDwPYyF85gADhJWxqN49C4JhL9Jrpw",
+    authDomain: "beebee-mj.firebaseapp.com",
+    databaseURL: "https://beebee-mj-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "beebee-mj",
+    storageBucket: "beebee-mj.firebasestorage.app",
+    messagingSenderId: "455969527844",
+    appId: "1:455969527844:web:81d87e8b14620a6d6ba0b1"
+  };
+
+  const DEFAULT_ROSTER = [
+    "胖弟", "大雄", "安妮", "公公", "鴨鴨", "翔哥", "中雯", 
+    "酒空馨", "于兄", "阿康", "JG", "學長", "萱", "Doggy"
+  ];
+
+  let currentDB = {
+    roster: [...DEFAULT_ROSTER],
+    playerVisibility: {},
+    playerStats: {},
+    bookings: [],
+    currentSession: null,
+    totalLeagueMatches: 0,
+    archivedSessions: []
+  };
+  DEFAULT_ROSTER.forEach(name => {
+    currentDB.playerStats[name] = { totalScore: 0, sessionsPlayed: 0, matchesPlayed: 0, winsCount: 0 };
+    currentDB.playerVisibility[name] = true;
+  });
+
+  let pubSelectedPlayer = null;
+  let weekOffset = 0;
+  let currentSortKey = 'totalScore';
+  let isSortAsc = false;
+
+  firebase.initializeApp(firebaseConfig);
+  const dbRef = firebase.database().ref("league_data");
+
+  dbRef.on("value", snapshot => {
+    try {
+      const val = snapshot.val();
+      if (val) {
+        currentDB = val;
+        if (!currentDB.bookings) currentDB.bookings = [];
+        if (!currentDB.archivedSessions) currentDB.archivedSessions = [];
+        if (!currentDB.playerStats) currentDB.playerStats = {};
+        if (!currentDB.roster) currentDB.roster = [...DEFAULT_ROSTER];
+        renderAllData(currentDB);
+      }
+    } catch(err) {
+      console.error("Firebase 連線渲染異常：", err);
+    }
+  });
+
+  function handleTableSort(key) {
+    if (currentSortKey === key) {
+      isSortAsc = !isSortAsc;
+    } else {
+      currentSortKey = key;
+      isSortAsc = false;
+    }
+    renderLeaderboardOnly();
+  }
+
+  function getComputedPlayerMetrics(DB) {
+    const rosterList = (DB && DB.roster && DB.roster.length > 0) ? DB.roster : DEFAULT_ROSTER;
+    const visibility = (DB && DB.playerVisibility) ? DB.playerVisibility : {};
+    const visibleRoster = rosterList.filter(name => visibility[name] !== false);
+
+    return visible
